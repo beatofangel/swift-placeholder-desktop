@@ -1,0 +1,8 @@
+{
+  "code": "zh_CN",
+  "messages": {
+    "system_error": "{_field_}发生系统错误！",
+    "requiredInput": "请输入{_field_}",
+    "requiredSelect": "请选择{_field_}"
+  }
+}

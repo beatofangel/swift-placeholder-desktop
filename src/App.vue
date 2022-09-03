@@ -1,28 +1,83 @@
 <template>
-  <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
-  </div>
+  <v-app>
+    <v-app-bar app color="primary" dark>
+      <div class="d-flex align-center">
+        <v-img
+          alt="App Logo"
+          class="shrink mr-2"
+          contain
+          src="logo.png"
+          transition="scale-transition"
+          width="40"
+        />
+      </div>
+      <v-tabs>
+        <v-tab v-for="link in links" :key="link.name" :to="link.path">
+          {{ link.name }}
+        </v-tab>
+      </v-tabs>
+      <v-spacer></v-spacer>
+
+      <v-avatar
+        class="hidden-sm-and-down"
+        color="grey darken-1 shrink"
+        size="32"
+        >A</v-avatar
+      >
+    </v-app-bar>
+
+    <v-main>
+      <router-view />
+    </v-main>
+  </v-app>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
-
 export default {
-  name: 'App',
-  components: {
-    HelloWorld
-  }
-}
+  name: "App",
+  mounted() {
+    const animationEndCallback = () => {
+      setTimeout(() => {
+        document.querySelector(".website-loading").remove();
+        document
+          .querySelector("#app")
+          .classList.toggle("website-loading-fadein");
+      }, 1000);
+    };
+
+    document.querySelector(".website-loading").addEventListener("animationend", animationEndCallback);
+
+    this.$router.options.routes.forEach((route) => {
+      this.links.push({
+        name: route.name,
+        path: route.path,
+        icon: route.icon,
+      });
+    });
+    document.querySelector(".website-loading").classList.remove("website-loading-fadein");
+    document.querySelector(".website-loading").classList.toggle("website-loading-fadeout");
+
+    // window.ipcRenderer
+    //   .send("toMain", "test2")
+    //   .then(console.log)
+    //   .catch(console.log);
+    // window.ipcRenderer.receive("fromMain").then(console.log).catch(console.log);
+    // var remote = require('electron').remote
+    // console.log(remote.getGlobal('sharedObject').db)
+  },
+  data: () => ({
+    links: [],
+  }),
+};
 </script>
 
-<style>
+<style lang="scss">
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
-  margin-top: 60px;
 }
+
 </style>
