@@ -26,7 +26,7 @@ const calcWindowSize = () => {
   // const width = (wLevels.find(w=>screenSize.width <= w) || screenSize.width) * 0.8
   // const height = (hLevels.find(h=>screenSize.height <= h) || screenSize.height) * 0.8
   const width = screenSize.width / 2
-  const height = screenSize.height * 2 / 3
+  const height = screenSize.height * 3 / 4
   return {
     width: width,
     height: height
@@ -191,6 +191,10 @@ ipcMain.handle('filePicker', async (event, data) => {
   return result.canceled ? '' : result.filePaths[0]
 })
 
+ipcMain.handle('getAppVersion', async (event) => {
+  return app.getVersion()
+})
+
 ipcMain.on('notification', (event, options) => {
   if (!options) return
   const notification = new Notification(options)
@@ -286,7 +290,8 @@ ipcMain.on('previewPdf', async (event, { id, path: tplPath, data }) => {
         console.log(error.toString())
       } else {
         const placeholders = stdout ? stdout.split('\n') : []
-        console.log(stdout)
+        // console.log(stdout)
+        event.sender.send('readPlaceholderFromTemplate', { id: id, ph: placeholders })
         const inputDoc = outputDoc
         const convertCommandWindows = previewPdfCmd(outputDir, inputDoc)
         try {
@@ -295,7 +300,7 @@ ipcMain.on('previewPdf', async (event, { id, path: tplPath, data }) => {
               console.log(error.toString())
             } else {
               const oriPdf = Path.join(outputDir, `${tempUuid}.pdf`)
-              event.sender.send('previewPdf', { id: id, path: oriPdf, ph: placeholders })
+              event.sender.send('previewPdf', { id: id, path: oriPdf })
               // const outputPdf = Path.join(outputDir, `${id}.pdf`)
               // fs.renameSync(oriPdf, outputPdf)
               // event.sender.send('fromMain', { id: id, data: buffer })

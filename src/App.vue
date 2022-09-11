@@ -29,6 +29,9 @@
     <v-main>
       <router-view />
     </v-main>
+    <span style="position:absolute;right:0;bottom:0;opacity:50%;font-size:28px;margin:20px;">
+      测试版 v{{ appVersion }}
+    </span>
   </v-app>
 </template>
 
@@ -36,6 +39,9 @@
 export default {
   name: "App",
   mounted() {
+    window.ipc.invoke('getAppVersion').then(version=>{
+      this.appVersion = version
+    })
     const animationEndCallback = () => {
       setTimeout(() => {
         document.querySelector(".website-loading").remove();
@@ -67,6 +73,7 @@ export default {
   },
   data: () => ({
     links: [],
+    appVersion: null
   }),
 };
 </script>

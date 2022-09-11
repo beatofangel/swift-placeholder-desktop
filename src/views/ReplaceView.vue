@@ -184,7 +184,8 @@
                   </v-col>
                 </v-row>
               </v-card-text>
-              <v-card-actions>
+              <v-card-actions class="px-4">
+                <v-spacer></v-spacer>
                 <v-btn text>取消</v-btn>
                 <v-btn
                   type="submit"
@@ -239,9 +240,6 @@
         </template>
       </common-list>
     </v-dialog>
-    <span style="position:absolute;right:0;bottom:0;opacity:50%;font-size:28px;margin:20px;">
-      测试版
-    </span>
   </v-container>
 </template>
 

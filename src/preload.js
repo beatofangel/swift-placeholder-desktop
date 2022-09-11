@@ -9,10 +9,12 @@ const channels = {
     'openFile',
     'saveFile',
     'previewPdf',
+    'getAppVersion'
   ],
   m2r: [
     'fromMain',
     'previewPdf',
+    'readPlaceholderFromTemplate'
   ]
 }
 contextBridge.exposeInMainWorld('ipc', {
