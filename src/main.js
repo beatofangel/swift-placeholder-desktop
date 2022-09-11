@@ -4,10 +4,12 @@ import vuetify from './plugins/vuetify'
 import router from './router'
 import './validator'
 import { ValidationProvider, ValidationObserver } from "vee-validate";
+import VueIframe from 'vue-iframes'
 
 Vue.config.productionTip = false
 Vue.component('validation-provider', ValidationProvider)
 Vue.component('validation-observer', ValidationObserver)
+Vue.use(VueIframe)
 
 new Vue({
   vuetify,

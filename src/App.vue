@@ -57,11 +57,11 @@ export default {
     document.querySelector(".website-loading").classList.remove("website-loading-fadein");
     document.querySelector(".website-loading").classList.toggle("website-loading-fadeout");
 
-    // window.ipcRenderer
+    // window.ipc
     //   .send("toMain", "test2")
     //   .then(console.log)
     //   .catch(console.log);
-    // window.ipcRenderer.receive("fromMain").then(console.log).catch(console.log);
+    // window.ipc.receive("fromMain").then(console.log).catch(console.log);
     // var remote = require('electron').remote
     // console.log(remote.getGlobal('sharedObject').db)
   },

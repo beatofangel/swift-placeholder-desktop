@@ -63,7 +63,8 @@
               </v-col>
             </v-row>
           </v-card-text>
-          <v-card-actions>
+          <v-card-actions class="px-4">
+            <v-spacer></v-spacer>
             <v-btn @click="onCancel" text>取消</v-btn>
             <v-btn
               type="submit"
@@ -100,12 +101,12 @@ export default {
           sort: this.sort,
         }
       },
-      set(newVal) {
-        this.$emit('input', newVal.id)
-        this.$emit('input', newVal.name)
-        this.$emit('input', newVal.icon)
-        this.$emit('input', newVal.sort)
-      }
+      // set(newVal) {
+      //   this.$emit('input', newVal.id)
+      //   this.$emit('input', newVal.name)
+      //   this.$emit('input', newVal.icon)
+      //   this.$emit('input', newVal.sort)
+      // }
     },
   },
   methods: {

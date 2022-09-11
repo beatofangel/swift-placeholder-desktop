@@ -1,10 +1,15 @@
 'use strict'
 
-import { app, protocol, BrowserWindow, ipcMain, screen, dialog, Notification, shell } from 'electron'
-import { existsSync, mkdir, unlinkSync } from 'fs'
-import path from 'path'
+import { app, protocol, BrowserWindow, ipcMain, screen, dialog, Notification, shell, remote } from 'electron'
+import fs, { readFileSync } from 'fs'
+import Path from 'path'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import _ from 'lodash'
+import { exec } from 'child_process'
+import { v4 as uuidv4 } from 'uuid'
+import moment from 'moment'
+import numeral from 'numeral'
+
 // import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
@@ -33,12 +38,15 @@ async function createWindow() {
   const win = new BrowserWindow({
     width: screenSize.width,
     height: screenSize.height,
+    minWidth: screenSize.width,
+    minHeight: screenSize.height,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: Path.join(__dirname, 'preload.js'),
       // Use pluginOptions.nodeIntegration, leave this alone
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
       nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION,
-      contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION
+      contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION,
+      webSecurity: false
     }
   })
 
@@ -78,7 +86,7 @@ app.on('ready', async () => {
       /****************** 加载本地vue-devTools **************/
       const { session } = require("electron");
       session.defaultSession.loadExtension(
-        path.resolve(__dirname, "../../vue-devtools/packages/shell-chrome")
+        Path.resolve(__dirname, "../../vue-devtools/packages/shell-chrome")
       ); 
       /*****************************************************/
       /************************ 注释此行 ********************/
@@ -92,19 +100,19 @@ app.on('ready', async () => {
   // console.log(__dirname)
   // const tar = require('tar')
   // const child_process = require('child_process')
-  // if (!existsSync(path.join(__dirname, 'instdir'))) {
+  // if (!existsSync(Path.join(__dirname, 'instdir'))) {
   //   await tar.extract({
-  //     file: path.join(__dirname, '/../extraResources/lo.tar.gz'),
-  //     C: path.join(__dirname)
+  //     file: Path.join(__dirname, '/../extraResources/lo.tar.gz'),
+  //     C: Path.join(__dirname)
   //   })
   // }
 
-  // unlinkSync(path.resolve(__dirname, 'extraResources/lo.tar.gz'))
+  // unlinkSync(Path.resolve(__dirname, 'extraResources/lo.tar.gz'))
 
   // const extOutput = 'doc'
   // const outputDir = app.getPath("downloads")
-  // const pathFile = 'C:/Users/EricW/Desktop/文本替换工具V4/向法院提交材料清单（曾丽蓉）.doc'
-  // const convertCommandWindows = `${path.resolve(__dirname, 'instdir', 'program', 'soffice.bin')} --headless --norestore --invisible --nodefault --nofirststartwizard --nolockcheck --nologo --convert-to ${extOutput} --outdir ${outputDir} "${pathFile}"`;
+  // const pathFile = 'C:/Users/EricW/Desktop/xxxxxxx.doc'
+  // const convertCommandWindows = `${Path.resolve(__dirname, 'instdir', 'program', 'soffice.bin')} --headless --norestore --invisible --nodefault --nofirststartwizard --nolockcheck --nologo --convert-to ${extOutput} --outdir ${outputDir} "${pathFile}"`;
   // try {
     // child_process.execSync(convertCommandWindows).toString('utf8')
   // } catch (error) {
@@ -131,13 +139,13 @@ if (isDevelopment) {
   }
 }
 
-const homedir = path.join(app.getPath("documents"), _.camelCase(app.name))
-existsSync(homedir) || mkdir(homedir, err=>{
+const homedir = Path.join(app.getPath("documents"), _.camelCase(app.name))
+fs.existsSync(homedir) || fs.mkdir(homedir, err=>{
   if (err) {
     console.log(`cannot create app home directory: ${err}`)
   } else {
     const subdirs = ['template']
-    subdirs.forEach(subdir=>mkdir(path.join(homedir, subdir), err=>{
+    subdirs.forEach(subdir=>fs.mkdir(Path.join(homedir, subdir), err=>{
       if (err) {
         console.log(`cannot create directory: ${err}`)
       }
@@ -183,7 +191,7 @@ ipcMain.handle('filePicker', async (event, data) => {
   return result.canceled ? '' : result.filePaths[0]
 })
 
-ipcMain.handle('notification', (event, options) => {
+ipcMain.on('notification', (event, options) => {
   if (!options) return
   const notification = new Notification(options)
   notification.show()
@@ -191,4 +199,114 @@ ipcMain.handle('notification', (event, options) => {
 
 ipcMain.handle('openFile', async (event, filePath) => {
   return await shell.openPath(filePath)
+})
+
+ipcMain.handle('saveFile', async (event, { srcPath, folder, type }) => {
+  const parsedPath = Path.parse(srcPath)
+  const destPath = Path.join(homedir, type, folder)
+  fs.existsSync(destPath) || fs.mkdirSync(destPath)
+  const destFile = Path.join(destPath, `${uuidv4()}${parsedPath.ext}`)
+  fs.copyFileSync(srcPath, destFile)
+  
+  return {
+    path: destFile
+  }
+})
+
+ipcMain.handle('deleteFile', async (event, { path }) => {
+  fs.existsSync(path) && fs.rmSync(path)
+  return true
+})
+
+// ipcMain.on('previewPdf', async (event, { id, path: tplPath }) => {
+  
+//   const extOutput = 'pdf'
+//   const outputDir = app.getPath('temp')
+//   const pathFile = tplPath
+//   const soffice = Path.resolve("C:/Users/EricW/Documents/WORKSPACE/VSCODE/swift-placeholder-desktop", 'instdir', 'program', 'soffice.exe')
+//   const convertCommandWindows = `${soffice} --headless --norestore --invisible --nodefault --nofirststartwizard --nolockcheck --nologo --convert-to ${extOutput} --outdir ${outputDir} "${pathFile}"`;
+//   try {
+//     exec(convertCommandWindows, (error, stdout, stderr) => {
+//       if (error) {
+//         console.log(error.toString())
+//       } else {
+//         const oriPdf = Path.join(outputDir, `${Path.parse(tplPath).name}.${extOutput}`)
+//         // const tmpPdf = Path.join(outputDir, `${uuidv4()}.${extOutput}`)
+//         const tmpPdf = Path.join(outputDir, `${id}.${extOutput}`)
+//         fs.renameSync(oriPdf, tmpPdf)
+//         event.sender.send('previewPdf', { id: id, path: tmpPdf })
+//       }
+//     })
+//     // execSync(convertCommandWindows).toString('utf8')
+//     // return await shell.openPath(tmpPdf)
+//   } catch (error) {
+//     console.log(error.toString())
+//   }
+// })
+
+function previewPdfCmd(outputDir, pathFile) {
+  const soffice = Path.resolve("C:/Users/EricW/Documents/WORKSPACE/VSCODE/swift-placeholder-desktop", 'instdir', 'program', 'soffice.exe')
+  return `${soffice} --headless --norestore --invisible --nodefault --nofirststartwizard --nolockcheck --nologo --convert-to pdf --outdir ${outputDir} "${pathFile}"`;
+}
+
+function doReplaceCmd(sourceDoc, outputDoc, args) {
+  const replaceApp = Path.resolve("C:/Users/EricW/Documents/WORKSPACE/VSCODE/swift-placeholder-desktop", "replaceApp", "replaceApp.exe")
+  return `${replaceApp} -s "${sourceDoc}" -o "${outputDoc}" ${args}`
+}
+
+function formatReplacement({ value, type, format }) {
+  let result = value
+  if (value && format) {
+    switch (type) {
+      case 'date':
+        result = moment(value).format(format)
+        break
+      case 'number':
+        // TODO
+        result = numeral(value).format(format)
+        break
+    }
+  }
+
+  return result
+}
+
+ipcMain.on('previewPdf', async (event, { id, path: tplPath, data }) => {
+  const outputDir = app.getPath('temp')
+  const sourceDoc = tplPath
+  const tempUuid = uuidv4()
+  const outputDoc = Path.join(outputDir, `${tempUuid}.docx`)
+  const args = data.map(e=>{
+    return `-p "${e.name}" -r "${formatReplacement(e)}"`
+  }).join(" ")
+  const replaceCommandWindows = doReplaceCmd(sourceDoc, outputDoc, args)
+  try {
+    exec(replaceCommandWindows, (error, stdout, stderr) => {
+      if (error) {
+        console.log(error.toString())
+      } else {
+        const placeholders = stdout ? stdout.split('\n') : []
+        console.log(stdout)
+        const inputDoc = outputDoc
+        const convertCommandWindows = previewPdfCmd(outputDir, inputDoc)
+        try {
+          exec(convertCommandWindows, (error, stdout, stderr) => {
+            if (error) {
+              console.log(error.toString())
+            } else {
+              const oriPdf = Path.join(outputDir, `${tempUuid}.pdf`)
+              event.sender.send('previewPdf', { id: id, path: oriPdf, ph: placeholders })
+              // const outputPdf = Path.join(outputDir, `${id}.pdf`)
+              // fs.renameSync(oriPdf, outputPdf)
+              // event.sender.send('fromMain', { id: id, data: buffer })
+            }
+          })
+        } catch (error) {
+          console.log(error.toString())
+        }
+      }
+    })
+  } catch (error) {
+    console.log(error.toString())
+  }
 })
