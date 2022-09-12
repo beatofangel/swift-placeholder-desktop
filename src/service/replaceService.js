@@ -160,6 +160,41 @@ export async function updateTemplate(item) {
   })
 }
 
+export async function savePlaceholder(item) {
+  return await runInternal(async db => {
+    if (item.insert) {
+      const rst1 = await db.run(SQL.savePlaceholderGroupSql, {
+        '@id': item.groupId,
+        '@name': item.groupName
+      })
+      console.log(rst1)
+      await item.items.forEach(async ph => {
+        const rst2 = await db.run(SQL.savePlaceholderItemSql, {
+          '@id': ph.id,
+          '@name': ph.name,
+          '@type': ph.type,
+          '@format': ph.format
+        })
+        console.log(rst2)
+        const rst3 = await db.run(SQL.insertPhGroupItemRelSql, {
+          '@id': uuidv4(),
+          '@phGrpId': item.groupId,
+          '@phId': ph.id,
+          '@sort': ph.sort
+        })
+        console.log(rst3)
+      })
+      const rst4 = await db.run(SQL.insertTplPhgrpRelSql, {
+        '@id': uuidv4(),
+        '@tplId': item.templateId,
+        '@phGrpId': item.groupId,
+        '@sort': item.groupSort
+      })
+      console.log(rst4)
+    }
+  })
+}
+
 // async function get(sql, params, func) {
 //   return openDb().then(db => {
 //     return db.get(sql, params).then(func).finally(() => {

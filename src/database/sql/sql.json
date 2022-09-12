@@ -11,5 +11,9 @@
   "deleteTemplateSql": "DELETE FROM TEMPLATE WHERE ID=@id",
   "deleteBcTplRelByTemplateIdSql": "DELETE FROM BC_TPL_REL WHERE TPLID=@templateId",
   "deleteTplPhgrpRelByTemplateIdSql": "DELETE FROM TPL_PHGRP_REL WHERE TPLID=@templateId",
-  "insertBcTplRelSql": "INSERT INTO BC_TPL_REL (ID,BCID,TPLID) VALUES (@id,@bcid,@tplid)"
+  "insertBcTplRelSql": "INSERT INTO BC_TPL_REL (ID,BCID,TPLID) VALUES (@id,@bcid,@tplid)",
+  "savePlaceholderItemSql": "INSERT OR REPLACE INTO PLACEHOLDER_ITEM (ID,NAME,TYPE,FORMAT) VALUES (@id,@name,@type,@format)",
+  "savePlaceholderGroupSql": "INSERT OR REPLACE INTO PLACEHOLDER_GROUP (ID,NAME) VALUES (@id,@name)",
+  "insertPhGroupItemRelSql": "INSERT INTO PH_GROUP_ITEM_REL (ID,GID,PHID,SORT) VALUES (@id,@phGrpId,@phId,@sort)",
+  "insertTplPhgrpRelSql": "INSERT INTO TPL_PHGRP_REL (ID,TPLID,GID,SORT) VALUES (@id,@tplId,@phGrpId,@sort)"
 }

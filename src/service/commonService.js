@@ -3,6 +3,7 @@ const {
   listTemplateByBusinessCategoryId,
   saveBusinessCategory,
   saveTemplate,
+  savePlaceholder
 } = require('./replaceService')
 
 const listMethods = {
@@ -12,7 +13,8 @@ const listMethods = {
 
 const saveMethods = {
   saveBusinessCategory,
-  saveTemplate
+  saveTemplate,
+  savePlaceholder
 }
 
 export function list(type, condition) {

@@ -69,7 +69,7 @@
                               <v-list-item :ripple="false">
                                 <v-list-item-action>
                                   <v-icon
-                                    :class="{ 'rotate-transition': hover }"
+                                    :class="{ 'rotate-transition-120': hover }"
                                     color="primary"
                                     >mdi-cog</v-icon
                                   >
@@ -186,13 +186,12 @@
               </v-card-text>
               <v-card-actions class="px-4">
                 <v-spacer></v-spacer>
-                <v-btn text>取消</v-btn>
                 <v-btn
                   type="submit"
                   :loading="processing.submit"
                   :disabled="invalid"
                   color="primary"
-                  >确定</v-btn
+                  >开始替换</v-btn
                 >
               </v-card-actions>
             </v-card>
@@ -283,38 +282,22 @@ export default {
         });
       }
     },
+    "dialog.showTemplateList"(val) {
+      if (!val) {
+        this.onBusinessCategoryChange();
+      }
+    },
     "formData.businessCategory"(val) {
       console.log("业务分类(watch)：", val);
       this.formData.editTemplate = null;
       this.editTemplateMode = false;
-      this.formData.placeholderGroups = [];
-      this.formData.placeholders = [];
-      this.formData.template = null;
+      // this.formData.placeholderGroups = [];
+      // this.formData.placeholders = [];
+      // this.formData.template = null;
       this.formData.templates = [];
       this.templatePreview = null;
       this.$refs.observer.reset();
-      val &&
-        window.replaceService
-          .listTemplateByBusinessCategoryId(this.formData.businessCategory)
-          .then((data) => {
-            data.length > 0 && (this.formData.template = data[0]);
-            this.formData.templates = data;
-            // if (this.formData.template) {
-            //   window.replaceService
-            //     .listPlaceholderGroupByTemplateId(this.formData.template.id)
-            //     .then((data) => {
-            //       this.formData.placeholderGroups = data;
-            //       this.expanded = this.formData.placeholderGroups;
-            //     });
-            //   window.replaceService
-            //     .listPlaceholderByTemplateId(this.formData.template.id)
-            //     .then((data) => {
-            //       this.formData.placeholders = data;
-
-            //     });
-            //   this.previewPdf();
-            // }
-          });
+      val && this.onBusinessCategoryChange();
     },
   },
   computed: {
@@ -328,6 +311,14 @@ export default {
     }
   },
   methods: {
+    onBusinessCategoryChange() {
+      window.replaceService
+        .listTemplateByBusinessCategoryId(this.formData.businessCategory)
+        .then((data) => {
+          // data.length > 0 && (this.formData.template = data[0]);
+          this.formData.templates = data;
+        });
+    },
     formatDate({ value, format }) {
       return value && format ? moment(value).format(format) : null;
     },
@@ -465,8 +456,8 @@ export default {
         template: null,
         templates: [],
         editTemplate: null,
-        placeholderGroups: [],
-        placeholders: [],
+        // placeholderGroups: [],
+        // placeholders: [],
       },
       businessCategoryHeaders: [
         {
@@ -504,38 +495,38 @@ export default {
           align: 'center',
         },
       ],
-      placeholderGroupsHeader: [
-        {
-          text: "名称",
-          value: "name",
-          align: "start",
-          cellClass: "column-width-name",
-        },
-        {
-          text: "替换为",
-          value: "value",
-          align: "center",
-        },
-      ],
-      placeholdersHeader: [
-        {
-          text: "No.",
-          value: "no",
-          align: "center",
-          cellClass: "column-width-no",
-        },
-        {
-          text: "名称",
-          value: "name",
-          align: "start",
-          cellClass: "column-width-name",
-        },
-        {
-          text: "替换为",
-          value: "value",
-          align: "center",
-        },
-      ],
+      // placeholderGroupsHeader: [
+      //   {
+      //     text: "名称",
+      //     value: "name",
+      //     align: "start",
+      //     cellClass: "column-width-name",
+      //   },
+      //   {
+      //     text: "替换为",
+      //     value: "value",
+      //     align: "center",
+      //   },
+      // ],
+      // placeholdersHeader: [
+      //   {
+      //     text: "No.",
+      //     value: "no",
+      //     align: "center",
+      //     cellClass: "column-width-no",
+      //   },
+      //   {
+      //     text: "名称",
+      //     value: "name",
+      //     align: "start",
+      //     cellClass: "column-width-name",
+      //   },
+      //   {
+      //     text: "替换为",
+      //     value: "value",
+      //     align: "center",
+      //   },
+      // ],
       rules: {
         businessCategory: { requiredSelect: true },
         outputFolder: { requiredSelect: true },
@@ -560,12 +551,7 @@ export default {
 };
 </script>
 <style>
-.rotate-transition {
+.rotate-transition-120 {
   transform: rotate(120deg);
-}
-</style>
-<style scoped>
-.rotate-open {
-  transform: rotate(0.5turn);
 }
 </style>
