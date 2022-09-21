@@ -1,4 +1,5 @@
-const { openDb } = require('../database/userdata')
+const { openDb, Models } = require('../database/userdata')
+const _ = require('lodash')
 
 export async function get(sql, params, func) {
   return openDb().then(db => {
@@ -54,4 +55,10 @@ export async function runInternal(func) {
       error: error
     }
   })
+}
+
+export function getModel(modelName) {
+  const model = Models[`${modelName}Model`]
+  if (!model) throw `Model with name ${modelName} not found.`
+  return model
 }

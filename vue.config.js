@@ -3,7 +3,8 @@ module.exports = {
     'vuetify'
   ],
   configureWebpack: {
-    devtool: 'source-map'
+    devtool: 'source-map',
+    externals: ['sqlite3', 'sequelize'],
   },
   pluginOptions: {
     electronBuilder: {

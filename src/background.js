@@ -9,6 +9,7 @@ import { exec } from 'child_process'
 import { v4 as uuidv4 } from 'uuid'
 import moment from 'moment'
 import numeral from 'numeral'
+import { sequelize } from './database/sequelize'
 
 // import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -96,6 +97,8 @@ app.on('ready', async () => {
       console.error('Vue Devtools failed to install:', e.toString())
     }
   }
+
+  await sequelize.sync()
 
   // console.log(__dirname)
   // const tar = require('tar')

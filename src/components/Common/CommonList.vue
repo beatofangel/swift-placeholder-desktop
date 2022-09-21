@@ -20,210 +20,159 @@
       fixed-header
       :height="tableHeight"
     >
-      <template v-slot:[`item.data-table-select`]="{ isSelected, select }">
-        <v-icon :color="isSelected ? 'primary' : ''" @click="select(!isSelected)">{{ isSelected ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank'}}</v-icon>
-      </template>
-      <template v-slot:[`item.index`]="{ index }">
-        {{ index + 1 }}
-      </template>
-      <template v-for="(_, slot) in $scopedSlots" v-slot:[`${slot}`]="props">
-        <slot :name="slot" v-bind="props"></slot>
-      </template>
-      <template v-slot:[`item.actions`]="{ item }">
-        <v-row class="actions justify-center">
-          <v-icon class="rearrange" v-if="item.sort" :disabled="items.findIndex(e=>e.sort > item.sort) == -1" @click="moveDown(item)">mdi-arrow-down</v-icon>
-          <v-icon class="rearrange" v-if="item.sort" :disabled="items.findIndex(e=>e.sort < item.sort) == -1" @click="moveUp(item)">mdi-arrow-up</v-icon>
-          <v-icon class="rearrange" v-if="item.sort" :disabled="items.findIndex(e=>e.sort < item.sort) == -1" @click="moveTop(item)">mdi-arrow-collapse-up</v-icon>
-          <v-divider class="divider mx-1" v-if="item.sort" vertical></v-divider>
-          <v-icon class="edit" @click="showEdit({...item, isEdit: true})">mdi-pencil</v-icon>
-          <v-icon class="delete" @click="handleDelete({ ...item, delete: true})">mdi-delete</v-icon>
-        </v-row>
+      <template v-slot:body="{ items: slotItems, headers, isSelected, select }">
+        <draggable
+          v-model="items"
+          :animation="200"
+          :group="`${title}List`"
+          :disabled="slotItems.length == 0"
+          ghostClass="ghost"
+          tag="tbody"
+          @start="onDragRow"
+          @end="onDropRow"
+        >
+          <template v-for="(item, index) in slotItems">
+            <transition :name="!drag ? 'flip-list' : null" type="transition" :key="item.name">
+              <tr>
+                <template v-for="{ value } in headers">
+                  <td v-if="value == 'data-table-select'" :key="value">
+                    <v-icon :color="isSelected(item) ? 'primary' : ''" @click="select(item, !isSelected(item))">{{ isSelected(item) ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank'}}</v-icon>
+                  </td>
+                  <td v-if="value == 'index'" class="text-start" :key="`item.${value}`">
+                    {{ index + 1 }}
+                  </td>
+                  <td v-if="!['index', 'data-table-select', 'actions'].includes(value)" class="text-start" :key="`item.${value}`">
+                    <slot v-if="$scopedSlots[`item.${value}`]" :name="`item.${value}`" v-bind:item="item" v-on="$scopedSlots[`item.${value}`]"></slot>
+                    <template v-else>{{ item[value] }}</template>
+                  </td>
+                  <td v-if="value == 'actions'" class="text-center" :key="`item.${value}`">
+                    <v-row class="actions justify-center">
+                      <v-icon class="edit" @click="showEdit({...item, isEdit: true})">mdi-pencil</v-icon>
+                      <v-icon class="delete" @click="handleDelete({ ...item, delete: true})">mdi-delete</v-icon>
+                    </v-row>
+                  </td>
+                </template>
+              </tr>
+            </transition>
+          </template>
+          <tr v-if="slotItems.length == 0" class="v-data-table__empty-wrapper">
+            <td :colspan="headers.length">
+              {{ noData }}
+            </td>
+          </tr>
+        </draggable>
       </template>
     </v-data-table>
     <v-divider></v-divider>
     <v-card-actions>
-      <v-btn v-if="showSelect" color="primary" @click="handleSelect">选择</v-btn>
+      <v-btn v-if="showSelect" color="primary" :disabled="items.length == 0 || selected.length == 0" @click="handleSelect">选择</v-btn>
       <v-spacer></v-spacer>
-      <v-btn color="success" @click="showEdit(newItem)">新增</v-btn>
+      <v-btn color="success" @click="showEdit()"><v-icon>mdi-plus</v-icon></v-btn>
     </v-card-actions>
     <v-dialog width="500" v-model="dialog.showDetail">
-      <slot v-bind="item" :cancel="handleCancel" :save="handleSave"></slot>
+      <slot v-bind="item" :title="title" :visible="dialog.showDetail" :cancel="handleCancel" :save="handleSave"></slot>
     </v-dialog>
   </v-card>
 </template>
 
 <script>
-import { v4 as uuidv4 } from 'uuid'
+import draggable from "vuedraggable";
 export default {
   props: {
-    condition: Object,
-    type: String,
+    condition: {
+      type: Object,
+      default: ()=>null
+    },
+    model: String,
     title: String,
     headers: Array,
     itemNames: Array,
     visible: Boolean,
     selectedId: String,
     showSelect: Boolean,
+    noData: {
+      type: String,
+      default: '没有数据'
+    },
     preInterceptor: {
       type: Object,
       default: ()=>{
         return {
-          save: Promise.resolve(),
-          delete: Promise.resolve()
+          save: () => Promise.resolve(true),
+          delete: () => Promise.resolve(true)
         }
       }
     },
+  },
+  components: {
+    draggable
+  },
+  mounted () {
   },
   watch: {
     visible:{
       immediate: true,
       handler(val) {
         if (val) {
-          window.commonService.list(this.type, this.condition).then(data => {
+          console.log(this.title, this.model, this.condition)
+          window.commonService.find(this.model, this.condition).then(data => {
             this.items = data
-            if (this.selectedId) {
-              this.$set(this, 'selected', this.items.filter(item=>item.id==this.selectedId))
-            }
+            this.$set(this, 'selected', this.selectedId ? this.items.filter(item=>item.id==this.selectedId) : [])
           })
         }
       }
-    },
+    }
   },
   computed: {
-    newSort() {
-      return this.items.map(i=>i.sort).sort((a,b)=>b-a)[0] + 1
-    },
-    newItem() {
-      const rst = { id: uuidv4() }
-      this.itemNames.forEach(e=>{
-        rst[e] = e == 'sort' ? this.newSort : ''
-      })
-      return rst
-      // return {id:uuidv4(),name:'',icon:'',sort: this.newSort, isEdit: false}
-    },
     tableHeight() {
       return '528px'
       // return window.innerHeight > 1000 ? '650px' : 'calc(70vh)'
-    }
+    },
   },
   methods: {
+    createNewItem() {
+      const rst = {}
+      this.itemNames.forEach(e=>{
+        rst[e] = e == 'sort' ? (this.items.length > 0 ? this.items.map(i=>i.sort).sort((a,b)=>b-a)[0] + 1 : 1) : null
+      })
+      return rst
+    },
+    onDragRow() {
+      this.drag = true
+    },
+    onDropRow() {
+      this.drag = false
+      let targetArr = []
+      this.items.forEach((item, index) => {
+        const oriSort = index + 1
+        if (oriSort != item.sort) {
+          item.sort = oriSort
+          targetArr.push(item)
+        }
+      })
+      console.log('update range:', targetArr)
+      targetArr.length > 0 && window.commonService.bulkSave(this.model, ...targetArr).then(()=>{
+        window.commonService.find(this.model, this.condition).then(data => {
+          this.items = data
+        })
+        this.$emit('change')
+        window.ipc.send('notification', {
+          title: "提示",
+          body: `${this.title}更新成功！`
+        })
+      }).catch(err => {
+        console.error(err)
+        window.ipc.send('notification', {
+          title: "错误",
+          body: `${this.title}更新失败！`
+        })
+      })
+    },
     onClose() {
       this.$emit('close', false)
     },
-    moveUp(item) {
-      let flag = false
-      let prev = null
-      for (const e of this.items) {
-        if (item != e) {
-          prev = e
-        } else {
-          flag = true
-          break
-        }
-      }
-      if (flag && prev) {
-        const sort = prev.sort
-        prev.sort = item.sort
-        item.sort = sort
-      }
-
-      window.commonService.save(this.type, prev, item).then(result=>{
-        if (result.success) {
-          window.commonService.list(this.type, this.condition).then(data => {
-            this.items = data
-          })
-          window.ipc.send('notification', {
-            title: "提示",
-            body: `${this.title}更新成功！`
-          })
-        } else {
-          window.ipc.send('notification', {
-            title: "错误",
-            body: `${this.title}更新失败！`
-          })
-        }
-      })
-    },
-    moveDown(item) {
-      let flag = false
-      let next = null
-      for (const e of this.items) {
-        if (flag) {
-          next = e
-          break
-        }
-        flag = item == e
-      }
-      if (next) {
-        const sort = next.sort
-        next.sort = item.sort
-        item.sort = sort
-      }
-
-      window.commonService.save(this.type, item, next).then(result=>{
-        if (result.success) {
-          window.commonService.list(this.type, this.condition).then(data => {
-            this.items = data
-          })
-          window.ipc.send('notification', {
-            title: "提示",
-            body: `${this.title}更新成功！`
-          })
-        } else {
-          window.ipc.send('notification', {
-            title: "错误",
-            body: `${this.title}更新失败！`
-          })
-        }
-      })
-    },
-    moveTop(item) {
-      if (item.sort == 1) return
-      const newTopItem = {}
-      for (const key in item) {
-        newTopItem[key] = key == 'sort' ? 1 : item[key]
-      }
-      let targetArr = [ newTopItem ]
-      // let targetArr = [{
-      //   id: item.id,
-      //   name: item.name,
-      //   icon: item.icon,
-      //   sort: 1
-      // }]
-      for (const e of this.items) {
-        if (e == item) break
-        const moveDownItem = {}
-        for (const key in e) {
-          moveDownItem[key] = key == 'sort' ? (e.sort + 1) : e[key]
-        }
-        targetArr.push(moveDownItem)
-        // targetArr.push({
-        //   id: e.id,
-        //   name: e.name,
-        //   icon: e.icon,
-        //   sort: e.sort + 1
-        // })
-      }
-
-      window.commonService.save(this.type, ...targetArr).then(result=>{
-        if (result.success) {
-          window.commonService.list(this.type, this.condition).then(data => {
-            this.items = data
-          })
-          window.ipc.send('notification', {
-            title: "提示",
-            body: `${this.title}置顶成功！`
-          })
-        } else {
-          window.ipc.send('notification', {
-            title: "错误",
-            body: `${this.title}置顶失败！`
-          })
-        }
-      })
-    },
     showEdit(item) {
-      this.item = JSON.parse(JSON.stringify(item))
+      this.item = JSON.parse(JSON.stringify(item || this.createNewItem()))
       this.dialog.showDetail = true
     },
     handleDelete(item) {
@@ -239,31 +188,24 @@ export default {
                 moveUpItem[key] = key == 'sort' ? (e.sort - 1) : e[key]
               }
               targetArr.push(moveUpItem)
-              // targetArr.push({
-              //   id: e.id,
-              //   name: e.name,
-              //   icon: e.icon,
-              //   sort: e.sort - 1
-              // })
             }
           }
-          
-          window.commonService.save(this.type, ...targetArr).then(result=>{
-            if (result.success) {
-              this.dialog.showDetail = false
-              window.commonService.list(this.type, this.condition).then(data => {
-                this.items = data
-              })
-              window.ipc.send('notification', {
-                title: "提示",
-                body: `${this.title}删除成功！`
-              })
-            } else {
-              window.ipc.send('notification', {
-                title: "错误",
-                body: `${this.title}删除失败！`
-              })
-            }
+          window.commonService.save(this.model, ...targetArr).then(()=>{
+            // this.dialog.showDetail = false
+            window.commonService.find(this.model, this.condition).then(data => {
+              this.items = data
+            })
+            this.$emit('change')
+            window.ipc.send('notification', {
+              title: "提示",
+              body: `${this.title}删除成功！`
+            })
+          }).catch(err => {
+            console.error(err)
+            window.ipc.send('notification', {
+              title: "错误",
+              body: `${this.title}删除失败！`
+            })
           })
         }
       })
@@ -273,22 +215,22 @@ export default {
         for (const key in preResult) {
           item[key] && (item[key] = preResult[key])
         }
-        window.commonService.save(this.type, item).then(result=>{
-          if (result.success) {
-            this.dialog.showDetail = false
-            window.commonService.list(this.type, this.condition).then(data => {
-              this.items = data
-            })
-            window.ipc.send('notification', {
-              title: "提示",
-              body: `${this.title}保存成功！`
-            })
-          } else {
-            window.ipc.send('notification', {
-              title: "错误",
-              body: `${this.title}保存失败！`
-            })
-          }
+        window.commonService.save(this.model, item).then(()=>{
+          this.dialog.showDetail = false
+          window.commonService.find(this.model, this.condition).then(data => {
+            this.items = data
+          })
+          this.$emit('change')
+          window.ipc.send('notification', {
+            title: "提示",
+            body: `${this.title}保存成功！`
+          })
+        }).catch(err => {
+          console.error(err)
+          window.ipc.send('notification', {
+            title: "错误",
+            body: `${this.title}保存失败！`
+          })
         })
       })
     },
@@ -312,7 +254,8 @@ export default {
       dialog: {
         showDetail: false
       },
-      selected: []
+      selected: [],
+      drag: false
     }
   }
 }

@@ -29,11 +29,12 @@
         >
           <draggable
             v-model="placeholdersInTemplate"
-            v-bind="dragOptions"
+            :animation="200"
+            :group="{name:'placeholder'}"
+            :disabled="!createPlaceholderGroup"
+            ghostClass="ghost"
             :class="{ 'placeholder-drop-area': createPlaceholderGroup }"
             style="min-height:100px;width:100%;text-align:center;vertical-align:top;"
-            :disabled="!createPlaceholderGroup"
-            :group="{name:'placeholder'}"
             @start="onDrag"
             @end="onDrop"
           >
@@ -673,16 +674,6 @@ export default {
 }
 .chip-draggable {
   cursor:move;
-}
-/* .flip-chip-move {
-  transition: transform 0.5s;
-}
-.no-move {
-  transition: transform 0s;
-} */
-.ghost {
-  opacity: 0.2;
-  /* background-color: gray !important; */
 }
 .placeholder-drop-area {
   border: 1px dashed rgba(0,0,0, .4) !important;

@@ -2,8 +2,10 @@ const {
   listBusinessCategoryAll,
   listTemplateByBusinessCategoryId,
   saveBusinessCategory,
+  bulkSaveBusinessCategory,
   saveTemplate,
-  savePlaceholder
+  savePlaceholder,
+  findBusinessCategoryByPid,
 } = require('./replaceService')
 
 const listMethods = {
@@ -12,10 +14,35 @@ const listMethods = {
 }
 
 const saveMethods = {
-  saveBusinessCategory,
   saveTemplate,
-  savePlaceholder
+  savePlaceholder,
+
+  saveBusinessCategory,
+  bulkSaveBusinessCategory,
 }
+
+const findMethods = {
+  findBusinessCategoryByPid,
+}
+
+const { upperFirst } = require('lodash')
+
+export async function find(modelName, conditions) {
+  const methodName = `find${modelName}` + (conditions ? `By${Object.keys(conditions).map(upperFirst).join('And')}` : 'All')
+  return await findMethods[methodName](conditions)
+}
+
+export async function bulkSave(modelName, ...items) {
+  const methodName = `bulkSave${modelName}`
+  return await saveMethods[methodName](items)
+}
+
+export async function save(modelName, item) {
+  const methodName = `save${modelName}`
+  return await saveMethods[methodName](item)
+}
+
+//-----------------------------------------------------------------------
 
 export function list(type, condition) {
   if (condition) {
@@ -34,6 +61,6 @@ export function list(type, condition) {
   }
 }
 
-export function save(type, items) {
-  return saveMethods[`save${type}`](items)
-}
+// export function save(type, ...items) {
+//   return saveMethods[`save${type}`](items)
+// }

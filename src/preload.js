@@ -9,7 +9,7 @@ const channels = {
     'openFile',
     'saveFile',
     'previewPdf',
-    'getAppVersion'
+    'getAppVersion',
   ],
   m2r: [
     'fromMain',

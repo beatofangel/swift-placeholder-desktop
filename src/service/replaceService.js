@@ -2,6 +2,75 @@ const SQL = require('../database/sql/sql.json')
 const { get, list, runInternal } = require('./baseService')
 const { v4: uuidv4 } = require('uuid')
 const moment = require('moment')
+const { sequelize, QueryTypes, getModel } = require('../database/sequelize')
+
+export async function findBusinessCategoryByPid({ pid }) {
+  return await sequelize.transaction(tx => {
+    return getModel('BusinessCategory').findAll({
+      where: {
+        pid: pid
+      },
+      order: [
+        ['sort']
+      ]
+    }).then(result => {
+      return result.map(e=>e.dataValues)
+    })
+  })
+}
+
+export async function saveBusinessCategory(item) {
+  return await bulkSaveBusinessCategory([ item ])
+}
+
+export async function bulkSaveBusinessCategory(items) {
+  return await sequelize.transaction(async tx => {
+    const model = getModel('BusinessCategory')
+    for (const item of items) {
+      if (item.delete) {
+        await model.destroy({
+          where: {
+            'id': item.id
+          }
+        })
+      } else {
+        await model.upsert(item)
+      }
+    }
+  })
+}
+
+export async function findOwnerlessTemplate() {
+  return await sequelize.transaction(tx => {
+    // TODO sql需要更新表
+    return sequelize.query(SQL.listOwnerlessTemplateSql, { type: QueryTypes.SELECT })
+  })
+}
+
+export async function findTemplateByCategoryId({ primaryCategoryId, secondaryCategoryId, tertiaryCategoryId }) {
+  // return await sequelize.transaction(tx => {
+  //   return sequelize.query(SQL.findTemplateByCategoryId, {
+  //     where: {
+  //       catId: tertiaryCategoryId || secondaryCategoryId || primaryCategoryId
+  //     },
+  //     order: [
+  //       [ 'sort' ]
+  //     ]
+  //   })
+  // })
+  const model = getModel('Template')
+  return await model.findAll({
+    where: {
+      catId: tertiaryCategoryId || secondaryCategoryId || primaryCategoryId
+    },
+    order: [
+      [ 'sort' ]
+    ]
+  })
+}
+
+
+//-------------------------------------------------------------------------
 
 export function listBusinessCategoryAll() {
   return list(SQL.listBusinessCategoryAllSql, result => result.map(e => {
@@ -71,30 +140,86 @@ export function listTemplateByBusinessCategoryId(businessCategoryId) {
   )
 }
 
-export async function saveBusinessCategory(items) {
+export function listOwnerlessTemplate() {
+  return list(SQL.listOwnerlessTemplateSql, result => result.map(e => {
+    return {
+      value: e.ID,
+      text: e.NAME,
+      path: e.PATH
+    }
+  }))
+}
+
+// export async function saveBusinessCategory(items) {
+//   return await runInternal(db => {
+//     items.forEach(async item => {
+//       if (item.delete) {
+//         // TODO 删除完成后会留下未与业务分类相关联的模板，需要在新建业务分类的时候增加一个选择无主模板的功能。
+//         // 目前模板文件的目录是跟着前任业务分类的，需要修改目录或者别的处理，否则无法关联。
+//         console.log(item)
+//         await db.run(SQL.deleteBcTplRelByBusinessCategoryIdSql, {
+//           '@businessCategoryId': item.id
+//         })
+//         console.log('BC_TPL_REL deleted.')
+//         await db.run(SQL.deleteBusinessCategorySql, {
+//           '@id': item.id
+//         })
+//         console.log('BUSINESS_CATEGORY_USER deleted.')
+//       } else {
+//         console.log(item)
+//         const rst = await db.run(SQL.saveBusinessCategorySql, {
+//           '@id': item.id,
+//           '@name': item.name,
+//           '@icon': item.icon,
+//           '@sort': item.sort
+//         })
+//         console.log(rst)
+//       }
+//     })
+//   })
+// }
+
+// TODO
+export async function saveTemplate(items) {
   return await runInternal(db => {
     items.forEach(async item => {
       if (item.delete) {
+        // TODO 需要做关联删除
         console.log(item)
-        const rst = await db.run(SQL.deleteBusinessCategoriesSql, {
+        await db.run(SQL.deleteBcTplRelByTemplateIdSql, {
+          '@templateId': item.id
+        })
+        console.log('BC_TPL_REL deleted.')
+        await db.run(SQL.deleteTplPhgrpRelByTemplateIdSql, {
+          '@templateId': item.id
+        })
+        console.log('TPL_PHGRP_REL deleted.')
+        await db.run(SQL.deleteTemplateSql, {
           '@id': item.id
         })
-        console.log(rst)
+        console.log('TEMPLATE deleted.')
       } else {
-        console.log(item)
-        const rst = await db.run(SQL.saveBusinessCategorySql, {
+        await db.run(SQL.saveTemplateSql, {
           '@id': item.id,
           '@name': item.name,
-          '@icon': item.icon,
-          '@sort': item.sort
+          '@path': item.path,
+          '@lastchange': moment().format("YYYY-MM-DD HH:mm:ss")
         })
-        console.log(rst)
+        console.log('TEMPLATE saved.')
+        if (item.insert) {
+          await db.run(SQL.insertBcTplRelSql, {
+            '@id': uuidv4(),
+            '@bcid': item.bcid,
+            '@tplid': item.id
+          })
+          console.log('BC_TPL_REL inserted.')
+        }
       }
     })
   })
 }
 
-export async function saveTemplate(item) {
+export async function saveTemplate2(item) {
   return await runInternal(async db=>{
     if (item.insert) {
       const rst1 = await db.run(SQL.saveTemplateSql, {
