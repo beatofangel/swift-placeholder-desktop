@@ -12,110 +12,136 @@
               <v-card-text>
                 <v-row>
                   <v-col>
-                      <v-row>
-                        <v-col v-for="index in categoryCount" :key="index" :cols="12 / categoryCount">
-                          <validation-provider
-                            :name="`${index > 2 ? '三' : index > 1 ? '二' : '一'}级类型`"
-                            :rules="rules.businessCategory"
-                            v-slot="{ errors, invalid }"
+                    <validation-provider
+                      name="业务类型"
+                      :rules="rules.businessCategory"
+                      v-slot="{ errors }"
+                    >
+                      <v-cascade-select
+                        v-model="formData.businessCategory"
+                        :items="businessCategoryOptions"
+                        label="业务类型"
+                        placeholder="请选择业务类型"
+                        persistent-placeholder
+                        :menuProps="{ offsetY: true, closeOnContentClick: false }"
+                        :error-messages="errors[0]"
+                        item-text="text"
+                        item-value="value"
+                        clearable
+                        open-on-clear
+                        outlined
+                      ></v-cascade-select>
+                    </validation-provider>
+                  </v-col>
+                </v-row>
+                <v-row>
+                  <v-col>
+                    <v-row>
+                      <v-col v-for="level in visibleCategoryLevels" :key="level" :cols="12 / visibleCategoryLevels">
+                        <validation-provider
+                          :name="getCategoryName(level)"
+                          :rules="rules.businessCategory"
+                          v-slot="{ errors, invalid }"
+                        >
+                          <v-select
+                            v-model="formData.categories2[level-1]"
+                            :items="categoryOptions2[level-1]"
+                            :menu-props="{
+                              bottom: true,
+                              offsetY: true,
+                              closeOnContentClick: true,
+                            }"
+                            item-text="name"
+                            item-value="id"
+                            :label="getCategoryName(level)"
+                            :error-messages="errors[0]"
+                            :placeholder="`请选择${getCategoryName(level)}`"
+                            persistent-placeholder
+                            clearable
+                            outlined
+                            @change="onChangeCategory(level)"
+                            @click:clear="onClearCategory(level)"
                           >
-                            <v-select
-                              v-model="formData.categories[getCatLevel(index)]"
-                              :items="categoryOptions[getCatLevel(index)]"
-                              :menu-props="{
-                                bottom: true,
-                                offsetY: true,
-                                closeOnContentClick: true,
-                              }"
-                              item-text="name"
-                              item-value="id"
-                              :label="`${index > 2 ? '三' : index > 1 ? '二' : '一'}级类型`"
-                              :error-messages="errors[0]"
-                              :placeholder="`请选择${index > 2 ? '三' : index > 1 ? '二' : '一'}级类型`"
-                              persistent-placeholder
-                              clearable
-                              outlined
-                            >
-                              <template v-slot:no-data>
-                                <v-list-item>
-                                  <v-list-item-action>
-                                  </v-list-item-action>
-                                  <v-list-item-content class="text--disabled">
-                                    没有数据
-                                  </v-list-item-content>
-                                </v-list-item>
-                              </template>
-                              <template v-slot:append-outer>
-                                <v-tooltip v-if="categoryCount == index && index < 3" top>
-                                  <template v-slot:activator="{ on, attrs }">
-                                    <v-icon color="success" :disabled="invalid" @click="appendCategory(index)" v-bind="attrs" v-on="on">
-                                      mdi-plus
-                                    </v-icon>
-                                  </template>
-                                  <span v-text="`添加${index > 1 ? '三' : '二'}级类型`"></span>
-                                </v-tooltip>
-                                <v-tooltip v-if="categoryCount == index && index > 1 && categoryOptions[getCatLevel(index)].length == 0" top>
-                                  <template v-slot:activator="{ on, attrs }">
-                                    <v-icon color="error" @click="removeCategory(index)" v-bind="attrs" v-on="on">
-                                      mdi-minus
-                                    </v-icon>
-                                  </template>
-                                  <span v-text="`删除${index < 3 ? '二' : '三'}级类型`"></span>
-                                </v-tooltip>
-                              </template>
-                              <template v-slot:selection="{ item }">
-                                <v-icon v-if="item.icon" color="primary">{{
-                                  item.icon
-                                }}</v-icon>
-                                <span class="ml-8">{{
-                                  `${item.sort} - ${item.name}`
-                                }}</span>
-                              </template>
-                              <template v-slot:item="{ item, on, attrs }">
-                                <v-list-item class="px-0" v-on="on" v-bind="attrs">
-                                  <v-hover v-slot="{ hover }">
-                                    <v-list-item :ripple="false">
-                                      <v-list-item-action>
-                                        <v-icon
-                                          v-if="item.icon"
-                                          :color="hover ? 'primary' : 'accent'"
-                                          >{{ item.icon }}</v-icon
-                                        >
-                                      </v-list-item-action>
-                                      <v-list-item-content>
-                                        {{ `${item.sort} - ${item.name}` }}
-                                      </v-list-item-content>
-                                    </v-list-item>
-                                  </v-hover>
-                                </v-list-item>
-                              </template>
-                              <template v-slot:append-item>
-                                <v-divider class="mt-2"></v-divider>
-                                <v-list-item
-                                  class="px-0"
-                                  @mousedown.prevent
-                                  @click="showCategoryDialog(index)"
-                                >
-                                  <v-hover v-slot="{ hover }">
-                                    <v-list-item :ripple="false">
-                                      <v-list-item-action>
-                                        <v-icon
-                                          :class="{ 'rotate-transition-120': hover }"
-                                          color="primary"
-                                          >mdi-cog</v-icon
-                                        >
-                                      </v-list-item-action>
-                                      <v-list-item-content>
-                                        管理业务类型
-                                      </v-list-item-content>
-                                    </v-list-item>
-                                  </v-hover>
-                                </v-list-item>
-                              </template>
-                            </v-select>
-                          </validation-provider>
-                        </v-col>
-                      </v-row>
+                            <template v-slot:no-data>
+                              <v-list-item>
+                                <v-list-item-action>
+                                </v-list-item-action>
+                                <v-list-item-content class="text--disabled">
+                                  没有数据
+                                </v-list-item-content>
+                              </v-list-item>
+                            </template>
+                            <template v-slot:append-outer>
+                              <v-tooltip v-if="visibleCategoryLevels == level && level < categoryLevels" top>
+                                <template v-slot:activator="{ on, attrs }">
+                                  <v-icon color="success" :disabled="invalid" @click="appendSubLevel(level)" v-bind="attrs" v-on="on">
+                                    mdi-plus
+                                  </v-icon>
+                                </template>
+                                <span v-text="`添加${getCategoryName(level)}`"></span>
+                              </v-tooltip>
+                              <v-tooltip v-if="level > 1 && (!categoryOptions2[level-1] || categoryOptions2[level-1].length == 0)" top>
+                                <template v-slot:activator="{ on, attrs }">
+                                  <v-icon color="error" @click="removeSubLevel(level-1)" v-bind="attrs" v-on="on">
+                                    mdi-minus
+                                  </v-icon>
+                                </template>
+                                <span v-text="`删除${getCategoryName(level)}`"></span>
+                              </v-tooltip>
+                            </template>
+                            <template v-slot:selection="{ item }">
+                              <v-icon v-if="item.icon" color="primary">{{
+                                item.icon
+                              }}</v-icon>
+                              <span class="ml-8">{{
+                                `${item.sort} - ${item.name}`
+                              }}</span>
+                            </template>
+                            <template v-slot:item="{ item, on, attrs }">
+                              <v-list-item class="px-0" v-on="on" v-bind="attrs">
+                                <v-hover v-slot="{ hover }">
+                                  <v-list-item :ripple="false">
+                                    <v-list-item-action>
+                                      <v-icon
+                                        v-if="item.icon"
+                                        :color="hover ? 'primary' : 'accent'"
+                                        >{{ item.icon }}</v-icon
+                                      >
+                                    </v-list-item-action>
+                                    <v-list-item-content>
+                                      {{ `${item.sort} - ${item.name}` }}
+                                    </v-list-item-content>
+                                  </v-list-item>
+                                </v-hover>
+                              </v-list-item>
+                            </template>
+                            <template v-slot:append-item>
+                              <v-divider class="mt-2"></v-divider>
+                              <v-list-item
+                                class="px-0"
+                                @mousedown.prevent
+                                @click="showCategoryDialog(level)"
+                              >
+                                <v-hover v-slot="{ hover }">
+                                  <v-list-item :ripple="false">
+                                    <v-list-item-action>
+                                      <v-icon
+                                        :class="{ 'rotate-transition-120': hover }"
+                                        color="primary"
+                                        >mdi-cog</v-icon
+                                      >
+                                    </v-list-item-action>
+                                    <v-list-item-content>
+                                      管理业务类型
+                                    </v-list-item-content>
+                                  </v-list-item>
+                                </v-hover>
+                              </v-list-item>
+                            </template>
+                          </v-select>
+                        </validation-provider>
+                      </v-col>
+                    </v-row>
                   </v-col>
                 </v-row>
                 <v-row>
@@ -260,18 +286,23 @@ import moment from "moment";
 import ReplacementEdit from '../components/Replacement/ReplacementEdit.vue';
 import { v4 as uuidv4 } from "uuid";
 import _ from 'lodash';
+import VCascadeSelect from '../components/VCascadeSelect'
 
 export default {
   components: {
     CommonList,
     BusinessCategoryDetail,
     TemplateDetail,
-    ReplacementEdit
+    ReplacementEdit,
+    VCascadeSelect
   },
   mounted() {
     window.commonService.find('BusinessCategory', { pid: null }).then(data => {
       console.log('BusinessCategory', data)
       this.categoryOptions.primary = data
+      this.categoryOptions2.push(data)
+      console.log(this.categoryOptions2)
+      console.log(this.formData.categories2)
     })
   },
   watch: {
@@ -306,16 +337,39 @@ export default {
     },
     "formData.businessCategory"(val) {
       console.log("业务分类(watch)：", val);
-      // this.formData.editTemplate = null;
-      this.editTemplateMode = false;
-      // this.formData.placeholderGroups = [];
-      // this.formData.placeholders = [];
-      // this.formData.template = null;
-      this.formData.templates = [];
-      this.templatePreview = null;
-      this.$refs.observer.reset();
-      val && this.onBusinessCategoryChange();
+      // // this.formData.editTemplate = null;
+      // this.editTemplateMode = false;
+      // // this.formData.placeholderGroups = [];
+      // // this.formData.placeholders = [];
+      // // this.formData.template = null;
+      // this.formData.templates = [];
+      // this.templatePreview = null;
+      // this.$refs.observer.reset();
+      // val && this.onBusinessCategoryChange();
     },
+    // "formData.categories2": {
+    //   deep: true,
+    //   handler(newVal, oldVal) {
+    //     for (let idx in newVal) {
+    //       if (newVal[idx] && !oldVal[idx]) {
+    //         this.categoryVisibleArray[idx + 1] = true
+    //         window.commonService.find('BusinessCategory', { pid: newVal[idx] }).then(data => {
+    //           this.categoryOptions2[idx + 1] = data
+    //         })
+    //         break
+    //       } else if (!newVal[idx] && oldVal[idx]) {
+    //         this.categoryVisibleArray[idx + 1] = false
+    //         break
+    //       } else if (newVal[idx] != oldVal[idx]) {
+    //         this.categoryVisibleArray[idx + 1] = true
+    //         window.commonService.find('BusinessCategory', { pid: newVal[idx] }).then(data => {
+    //           this.categoryOptions2[idx + 1] = data
+    //         })
+    //         break
+    //       }
+    //     }
+    //   }
+    // },
     /** 当前类型修改时，判断关联的下一级类型是否有可选项。若有，则显示下一级类型；否则隐藏下一级类型 */
     "formData.categories.primary"(val) {
       console.log('primary:', val)
@@ -406,9 +460,38 @@ export default {
       }
 
       return pid
+    },
+    visibleCategoryLevels() {
+      return this.categoryVisibleArray.filter(e=>e==true).length
+      // return this.categoryVisibleArray.reduce((total, current) => total + (current ? 1 : 0), 0)
     }
   },
   methods: {
+    getCategoryName(level) {
+      return `${['一','二','三','四'][level - 1]}级业务类型`
+    },
+    onChangeCategory(level) {
+      const index = level - 1
+      if (this.formData.categories2[index]) {
+        window.commonService.find('BusinessCategory', { pid: this.formData.categories2[index] }).then(data => {
+          this.$set(this.categoryVisibleArray, index + 1, data.length > 0)
+          this.categoryOptions2[index + 1] = data
+        })
+      }
+    },
+    onClearCategory(level) {
+      const index = level - 1
+      this.$set(this.categoryVisibleArray, index + 1, false)
+    },
+    appendSubLevel(level) {
+      const index = level - 1
+      this.$set(this.categoryVisibleArray, index + 1, true)
+      // this.categoryVisibleArray[level] = true
+    },
+    removeSubLevel(level) {
+      const index = level - 1
+      this.$set(this.categoryVisibleArray, index + 1, false)
+    },
     /** 当类型清单修改时，同步修改内容（重新取得下拉菜单） */
     updateCategoryOptions() {
       let params
@@ -548,14 +631,33 @@ export default {
     },
   },
   data() {
+    let MAX_LEVEL = 3
+    let visibleArray = new Array(MAX_LEVEL).fill(false)
+    visibleArray[0] = true
     return {
+      categoryLevels: MAX_LEVEL,
+      categoryVisibleArray: visibleArray,
+      categoryOptions2: [],
+      businessCategoryOptions: [
+        { value: 'val1', text: 'txt1', icon: 'mdi-numeric-1-box' },
+        { value: 'val2', text: 'txt2', icon: 'mdi-numeric-2-box', children: [
+            { value: 'val2-1', text: 'txt2-1', icon: 'mdi-numeric-1-box' },
+            { value: 'val2-2', text: 'txt2-2', icon: 'mdi-numeric-2-box', children: [
+                { value: 'val2-2-1', text: 'txt2-2-1', icon: 'mdi-numeric-1-box' },
+                { value: 'val2-2-2', text: 'txt2-2-2', icon: 'mdi-numeric-2-box' },
+              ]
+            },
+          ]
+        },
+      ],
       formData: {
-        businessCategory: null,
+        businessCategory: 'val2-2',
         categories: {
           primary: null,
           secondary: null,
           tertiary: null
         },
+        categories2: new Array(MAX_LEVEL).fill(null),
         outputFolder: null,
         templates: [],
       },
@@ -619,8 +721,6 @@ export default {
       editTemplateMode: false, // TODO 没用？
       templatePreview: null, // TODO 没用？
       tab: null,
-      categoryLevels: 3,
-      visibleCategoryLevels: 1,
     };
   },
 };
