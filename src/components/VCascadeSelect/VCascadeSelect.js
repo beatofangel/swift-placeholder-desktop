@@ -656,7 +656,7 @@ export default baseMixins.extend().extend({
               },
             },
             [
-              this.$createElement("div", { style: { "text-align": "center", cursor: this.levelScrollTop[level] ? "auto" : "pointer", height: "24px" }, on: { click: () => this.listScrollUp(`.noScrollBar-${level}`) } }, [this.$createElement(VIcon, { class: { noBgColorIcon: true }, props: { disabled: this.levelScrollTop[level], color: this.colors[level] } }, this.levelScrollTop[level] ? "mdi-blank" : "mdi-chevron-up")]),
+              this.$createElement("div", { class: { scrollPanel: true, disabled: this.levelScrollTop[level] }, style: { "text-align": "center", cursor: this.levelScrollTop[level] ? "auto" : "pointer", height: "24px" }, on: { click: () => this.listScrollUp(`.noScrollBar-${level}`) } }, [this.$createElement(VIcon, { class: { noBgColorIcon: true }, props: { disabled: this.levelScrollTop[level]/*, color: this.colors[level]*/ } }, this.levelScrollTop[level] ? "mdi-blank" : "mdi-chevron-up")]),
               this.$createElement(
                 VCardText,
                 {
@@ -679,7 +679,7 @@ export default baseMixins.extend().extend({
                 },
                 [this.$createElement(VCascadeSelectList, { ...data })]
               ),
-              this.$createElement("div", { style: { "text-align": "center", cursor: this.levelScrollBottom[level] ? "auto" : "pointer", height: "24px" }, on: { click: () => this.listScrollDown(`.noScrollBar-${level}`) } }, [this.$createElement(VIcon, { class: { noBgColorIcon: true }, props: { disabled: this.levelScrollBottom[level], color: this.colors[level] } }, this.levelScrollBottom[level] ? "mdi-blank" : "mdi-chevron-down")]),
+              this.$createElement("div", { class: { scrollPanel: true, disabled: this.levelScrollBottom[level] }, style: { "text-align": "center", cursor: this.levelScrollBottom[level] ? "auto" : "pointer", height: "24px" }, on: { click: () => this.listScrollDown(`.noScrollBar-${level}`) } }, [this.$createElement(VIcon, { class: { noBgColorIcon: true }, props: { disabled: this.levelScrollBottom[level]/*, color: this.colors[level]*/ } }, this.levelScrollBottom[level] ? "mdi-blank" : "mdi-chevron-down")]),
             ]
           )
         );

@@ -4,3 +4,6 @@
 .noBgColorIcon::after {
   background-color: transparent !important;
 }
+.scrollPanel:not(.disabled):hover {
+  background-color: #F5F5F5;
+}
