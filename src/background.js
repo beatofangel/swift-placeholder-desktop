@@ -98,7 +98,11 @@ app.on('ready', async () => {
     }
   }
 
-  await sequelize.sync()
+  await sequelize.sync({
+    alter: process.env.NODE_ENV !== 'production' && {
+      drop: false
+    }
+  })
 
   // console.log(__dirname)
   // const tar = require('tar')

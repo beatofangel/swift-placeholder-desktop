@@ -25,8 +25,8 @@
                         persistent-placeholder
                         :menuProps="{ offsetY: true, closeOnContentClick: false }"
                         :error-messages="errors[0]"
-                        item-text="text"
-                        item-value="value"
+                        item-text="name"
+                        item-value="id"
                         clearable
                         open-on-clear
                         outlined
@@ -297,6 +297,30 @@ export default {
     VCascadeSelect
   },
   mounted() {
+    window.replaceService.findBusinessCategoryCascaded().then(data => {
+      console.log(data)
+      
+      const formatted = []
+      const format = (items, formatted) => {
+        items.forEach(item => {
+          const dataValues = item.dataValues
+          const children = item.children
+          const formattedItem = {
+            id: dataValues.id,
+            name: dataValues.name,
+            icon: dataValues.icon
+          }
+          formatted.push(formattedItem)
+          if (children && children.length) {
+            formattedItem.children = []
+            format(children, formattedItem.children)
+          }
+        })
+      }
+      format(data, formatted)
+      this.businessCategoryOptions = formatted
+
+    })
     window.commonService.find('BusinessCategory', { pid: null }).then(data => {
       console.log('BusinessCategory', data)
       this.categoryOptions.primary = data
@@ -639,19 +663,9 @@ export default {
       categoryVisibleArray: visibleArray,
       categoryOptions2: [],
       businessCategoryOptions: [
-        { value: 'val1', text: 'txt1', icon: 'mdi-numeric-1-box' },
-        { value: 'val2', text: 'txt2', icon: 'mdi-numeric-2-box', children: [
-            { value: 'val2-1', text: 'txt2-1', icon: 'mdi-numeric-1-box' },
-            { value: 'val2-2', text: 'txt2-2', icon: 'mdi-numeric-2-box', children: [
-                { value: 'val2-2-1', text: 'txt2-2-1', icon: 'mdi-numeric-1-box' },
-                { value: 'val2-2-2', text: 'txt2-2-2', icon: 'mdi-numeric-2-box' },
-              ]
-            },
-          ]
-        },
       ],
       formData: {
-        businessCategory: 'val2-2',
+        businessCategory: null, //'67a9e7cd-506b-473a-b8fa-f19fe0743033',
         categories: {
           primary: null,
           secondary: null,

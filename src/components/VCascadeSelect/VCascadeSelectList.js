@@ -61,6 +61,59 @@ export default mixins(Colorable, Themeable).extend({
       type: Array,
       default: () => [],
     },
+    maxHeight: Number,
+    scrollTo: Boolean,
+  },
+  watch: {
+    scrollTo: {
+      immediate: true,
+      handler(val) {
+        if (val) {
+          setTimeout(() => {
+            if (!this.$el) return
+            if (this.$el.scrollHeight <= 48 * 5) {
+              console.log('清单高度不足', this.$el.scrollHeight)
+              this.$emit('scrollTop', true)
+              this.$emit('scrollBottom', true)
+            } else {
+              if (this.$el.scrollTop == 0) {
+                console.log('清单最顶部', this.$el.scrollTop)
+                this.$emit('scrollTop', true)
+              } else {
+                this.$emit('scrollTop', false)
+                this.$emit('scrollBottom', false)
+              }
+            }
+            const selectedDom = this.$el.querySelector('div[aria-selected="true"]')
+            selectedDom && selectedDom.scrollIntoView()
+          }, 100);
+        }
+      }
+    },
+    items: {
+      deep: true,
+      immediate: true,
+      handler() {
+        setTimeout(() => {
+          if (!this.$el) return
+          if (this.scrollTo) {
+            if (this.$el.scrollHeight <= 48 * 5) {
+              console.log('清单高度不足', this.$el.scrollHeight)
+              this.$emit('scrollTop', true)
+              this.$emit('scrollBottom', true)
+            } else {
+              if (this.$el.scrollTop == 0) {
+                console.log('清单最顶部', this.$el.scrollTop)
+                this.$emit('scrollTop', true)
+              } else {
+                this.$emit('scrollTop', false)
+                this.$emit('scrollBottom', false)
+              }
+            }
+          }
+        }, 100);
+      }
+    }
   },
   computed: {
     parsedItems() {

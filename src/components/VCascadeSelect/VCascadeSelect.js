@@ -1,10 +1,11 @@
 // Styles
 import "vuetify/src/components/VTextField/VTextField.sass";
 import "vuetify/src/components/VSelect/VSelect.sass"; // Components
+import "./VCascadeSelect.css";
 
 import VChip from "vuetify/lib/components/VChip";
 import VMenu from "vuetify/lib/components/VMenu";
-import VSelectList from "./VCascadeSelectList"; // Extensions
+import VCascadeSelectList from "./VCascadeSelectList"; // Extensions
 
 import VInput from "vuetify/lib/components/VInput";
 import VTextField from "vuetify/lib/components/VTextField/VTextField"; // Mixins
@@ -14,6 +15,7 @@ import Dependent from "vuetify/lib/mixins/dependent";
 import Filterable from "vuetify/lib/mixins/filterable"; // Directives
 
 import ClickOutside from "vuetify/lib/directives/click-outside"; // Utilities
+import Scroll from "vuetify/lib/directives/scroll"; // Utilities
 
 import mergeData from "vuetify/lib/util/mergeData";
 import {
@@ -43,6 +45,7 @@ export default baseMixins.extend().extend({
   name: "v-select",
   directives: {
     ClickOutside,
+    Scroll
   },
   props: {
     appendIcon: {
@@ -112,6 +115,12 @@ export default baseMixins.extend().extend({
       level1Selected: [],
       level2Selected: [],
       level3Selected: [],
+      level1ScrollTop: true,
+      level2ScrollTop: true,
+      level3ScrollTop: true,
+      level1ScrollBottom: true,
+      level2ScrollBottom: true,
+      level3ScrollBottom: true,
     };
   },
 
@@ -155,28 +164,6 @@ export default baseMixins.extend().extend({
       return `list-${this._uid}`;
     },
 
-    // computedCounterValue() {
-    //   var _a;
-
-    //   const value = ((_a = this.getText(this.selectedItems[0])) !== null && _a !== void 0
-    //       ? _a
-    //       : ""
-    //     ).toString();
-
-    //   // const value = this.multiple
-    //   //   ? this.selectedItems
-    //   //   : ((_a = this.getText(this.selectedItems[0])) !== null && _a !== void 0
-    //   //       ? _a
-    //   //       : ""
-    //   //     ).toString();
-
-    //   if (typeof this.counterValue === "function") {
-    //     return this.counterValue(value);
-    //   }
-
-    //   return value.length;
-    // },
-
     directives() {
       return this.isFocused
         ? [
@@ -196,63 +183,11 @@ export default baseMixins.extend().extend({
       return "auto";
     },
 
-    // hasChips() {
-    //   return this.chips || this.smallChips;
-    // },
-
-    // hasSlot() {
-    //   return Boolean(this.hasChips || this.$scopedSlots.selection);
-    // },
-
     isDirty() {
       // return this.level1Selected.length > 0
       return this.levelSelectedArray[0].length > 0;
       // return this.selectedItems.length > 0;
     },
-
-    // listData() {
-    //   const scopeId = this.$vnode && this.$vnode.context.$options._scopeId;
-    //   const attrs = scopeId
-    //     ? {
-    //         [scopeId]: true,
-    //       }
-    //     : {};
-    //   return {
-    //     attrs: { ...attrs, id: this.computedOwns },
-    //     props: {
-    //       // action: this.multiple,
-    //       color: this.itemColor,
-    //       dense: this.dense,
-    //       hideSelected: this.hideSelected,
-    //       items: this.virtualizedItems,
-    //       itemDisabled: this.itemDisabled,
-    //       itemText: this.itemText,
-    //       itemValue: this.itemValue,
-    //       noDataText: this.$vuetify.lang.t(this.noDataText),
-    //       selectedItems: this.selectedItems,
-    //     },
-    //     on: {
-    //       select: this.selectItem,
-    //     },
-    //     scopedSlots: {
-    //       item: this.$scopedSlots.item,
-    //     },
-    //   };
-    // },
-
-    // staticList() {
-    //   if (
-    //     this.$slots["no-data"] ||
-    //     this.$slots["prepend-item"] ||
-    //     this.$slots["append-item"]
-    //   ) {
-    //     consoleError(
-    //       "assert: staticList should not be called if slots are used"
-    //     );
-    //   }
-
-    //   return this.$createElement(VSelectList, this.listData);
-    // },
 
     virtualizedItems() {
       return this.$_menuProps.auto
@@ -315,27 +250,26 @@ export default baseMixins.extend().extend({
         this.selectedLevel3Items,
       ];
     },
+    levelScrollTop() {
+      return [this.level1ScrollTop, this.level2ScrollTop, this.level3ScrollTop]
+    },
+    levelScrollBottom() {
+      return [this.level1ScrollBottom, this.level2ScrollBottom, this.level3ScrollBottom]
+    }
   },
   watch: {
+    levelScrollTop(val) {
+      console.log('levelScrollTop', ...val)
+    },
+    levelScrollBottom(val) {
+      console.log('levelScrollBottom', ...val)
+    },
     internalValue(val, oVal) {
       console.log('internalValue changed', val, oVal)
       this.initialValue = val;
       // this.setSelectedItems();
 
-      // if (this.multiple) {
-      //   this.$nextTick(() => {
-      //     var _a;
-
-      //     (_a = this.$refs.menu) === null || _a === void 0
-      //       ? void 0
-      //       : _a.updateDimensions();
-      //   });
-      // }
     },
-
-    // isMenuActive(val) {
-    //   window.setTimeout(() => this.onMenuActiveChange(val));
-    // },
 
     items: {
       immediate: true,
@@ -377,7 +311,8 @@ export default baseMixins.extend().extend({
         }
         return false;
       };
-      pathFinder(obj, level);
+
+      this.value && pathFinder(obj, level);
 
       path.forEach((val, idx) => {
         this.levelSelectedArray[idx].splice(0);
@@ -458,52 +393,6 @@ export default baseMixins.extend().extend({
     getContent() {
       return this.$refs.menu && this.$refs.menu.$refs.content;
     },
-
-    // genChipSelection(item, index) {
-    //   const isDisabled = this.isDisabled || this.getDisabled(item);
-    //   const isInteractive = !isDisabled && this.isInteractive;
-    //   return this.$createElement(
-    //     VChip,
-    //     {
-    //       staticClass: "v-chip--select",
-    //       attrs: {
-    //         tabindex: -1,
-    //       },
-    //       props: {
-    //         close: this.deletableChips && isInteractive,
-    //         disabled: isDisabled,
-    //         inputValue: index === this.selectedIndex,
-    //         small: this.smallChips,
-    //       },
-    //       on: {
-    //         click: (e) => {
-    //           if (!isInteractive) return;
-    //           e.stopPropagation();
-    //           this.selectedIndex = index;
-    //         },
-    //         "click:close": () => this.onChipInput(item),
-    //       },
-    //       key: JSON.stringify(this.getValue(item)),
-    //     },
-    //     this.getText(item)
-    //   );
-    // },
-
-    // genCommaSelection(item, index, last) {
-    //   const color = index === this.selectedIndex && this.computedColor;
-    //   const isDisabled = this.isDisabled || this.getDisabled(item);
-    //   return this.$createElement(
-    //     "div",
-    //     this.setTextColor(color, {
-    //       staticClass: "v-select__selection v-select__selection--comma",
-    //       class: {
-    //         "v-select__selection--disabled": isDisabled,
-    //       },
-    //       key: JSON.stringify(this.getValue(item)),
-    //     }),
-    //     `${this.getText(item)}${last ? "" : ", "}`
-    //   );
-    // },
 
     genDefaultSlot() {
       const selections = this.genSelections2();
@@ -658,10 +547,21 @@ export default baseMixins.extend().extend({
           noDataText: "",
           selectedIndex: this.levelSelectedArray[level],
           selectedItems: this.selectedLevelItems[level],
+          scrollTo: this.isMenuActive,
+          maxHeight: defaultMenuProps.maxHeight,
           // selectedItems: this.selectedItems,
+        },
+        class: {
+          "py-0": true
         },
         on: {
           select: this.selectItem2,
+          scrollTop: (top) => {
+            this.$nextTick(() => this.levelScrollTop[level] = top)
+          },
+          scrollBottom: (bottom) => {
+            this.$nextTick(() => this.levelScrollBottom[level] = bottom)
+          }
         },
         scopedSlots: {
           item: this.$scopedSlots.item,
@@ -673,7 +573,7 @@ export default baseMixins.extend().extend({
       const depth = this.getDepth(this.items, 0);
       const list = [];
       for (let i = 0; i < depth; i++) {
-        // list.push(this.$createElement(VSelectList, { ...this.listData2(i),class: { 'col-12': depth == 1, 'col-6': depth == 2, 'col-4': depth == 3 } }))
+        const level = i
         list.push(
           this.$createElement(
             VCard,
@@ -683,21 +583,54 @@ export default baseMixins.extend().extend({
                 tile: true,
                 elevation: 0,
               },
-              style: { "overflow-y": "auto" },
               class: {
                 "col-12": depth == 1,
                 "col-6": depth == 2,
                 "col-4": depth == 3,
+                "py-1": true,
+              },
+              style: {
+                display: "flex",
+                "flex-direction": "column"
               },
             },
             [
+              this.$createElement("div", { style: { "text-align": "center" } }, [this.$createElement(VIcon, { attrs: { disabled: this.levelScrollTop[level], color: 'red' } }, "mdi-menu-up")]),
               this.$createElement(
                 VCardText,
                 {
-                  class: { "pa-0": true },
+                  style: { "flex-grow": 1 },
+                  class: { "pa-0": true, "noScrollBar": true, "overflow-y-auto": true },
+                  directives: [{
+                    name: "scroll",
+                    modifiers: { self: true },
+                    value: (e) => {
+                      if (e.target.scrollTop == 0) {
+                        this.$nextTick(() => {
+                          this.$set(this.levelScrollTop, level, true)
+                          this.$forceUpdate()
+                        })
+                      } else if (e.target.scrollTop == (e.target.children[0].clientHeight - e.target.clientHeight)) {
+                        this.$nextTick(() => {
+                          this.$set(this.levelScrollBottom, level, true)
+                          this.$forceUpdate()
+                        })
+                      } else {
+                        this.levelScrollTop[level] && this.$nextTick(() => {
+                          this.$set(this.levelScrollTop, level, false)
+                          this.$forceUpdate()
+                        })
+                        this.levelScrollBottom[level] && this.$nextTick(() => {
+                          this.$set(this.levelScrollBottom, level, false)
+                          this.$forceUpdate()
+                        })
+                      }
+                    }
+                  }]
                 },
-                [this.$createElement(VSelectList, { ...this.listData2(i) })]
+                [this.$createElement(VCascadeSelectList, { ...this.listData2(i) })]
               ),
+              this.$createElement("div", { style: { "text-align": "center" } }, [this.$createElement(VIcon, { attrs: { disabled: this.levelScrollBottom[level], color: 'red' } }, "mdi-menu-down")]),
             ]
           )
         );
@@ -714,37 +647,6 @@ export default baseMixins.extend().extend({
         ]
       );
     },
-
-    // genList() {
-    //   // If there's no slots, we can use a cached VNode to improve performance
-    //   if (
-    //     this.$slots["no-data"] ||
-    //     this.$slots["prepend-item"] ||
-    //     this.$slots["append-item"]
-    //   ) {
-    //     return this.genListWithSlot();
-    //   } else {
-    //     return this.staticList;
-    //   }
-    // },
-
-    // genListWithSlot() {
-    //   const slots = ["prepend-item", "no-data", "append-item"]
-    //     .filter((slotName) => this.$slots[slotName])
-    //     .map((slotName) =>
-    //       this.$createElement(
-    //         "template",
-    //         {
-    //           slot: slotName,
-    //         },
-    //         this.$slots[slotName]
-    //       )
-    //     ); // Requires destructuring due to Vue
-    //   // modifying the `on` property when passed
-    //   // as a referenced object
-
-    //   return this.$createElement(VSelectList, { ...this.listData }, slots);
-    // },
 
     genMenu() {
       const props = this.$_menuProps;
@@ -782,36 +684,6 @@ export default baseMixins.extend().extend({
         // [this.genList()]
       );
     },
-
-    // genSelections() {
-    //   let length = this.selectedItems.length;
-    //   const children = new Array(length);
-    //   let genSelection;
-
-    //   if (this.$scopedSlots.selection) {
-    //     genSelection = this.genSlotSelection;
-    //   // } else if (this.hasChips) {
-    //   //   genSelection = this.genChipSelection;
-    //   } else {
-    //     genSelection = this.genCommaSelection;
-    //   }
-
-    //   while (length--) {
-    //     children[length] = genSelection(
-    //       this.selectedItems[length],
-    //       length,
-    //       length === children.length - 1
-    //     );
-    //   }
-
-    //   return this.$createElement(
-    //     "div",
-    //     {
-    //       staticClass: "v-select__selections",
-    //     },
-    //     children
-    //   );
-    // },
 
     genSelections2() {
       const children = [];
@@ -883,23 +755,6 @@ export default baseMixins.extend().extend({
       );
     },
 
-    // genSlotSelection(item, index) {
-    //   return this.$scopedSlots.selection({
-    //     attrs: {
-    //       class: "v-chip--select",
-    //     },
-    //     parent: this,
-    //     item,
-    //     index,
-    //     select: (e) => {
-    //       e.stopPropagation();
-    //       this.selectedIndex = index;
-    //     },
-    //     selected: index === this.selectedIndex,
-    //     disabled: !this.isInteractive,
-    //   });
-    // },
-
     getMenuIndex() {
       return this.$refs.menu ? this.$refs.menu.listIndex : -1;
     },
@@ -919,20 +774,6 @@ export default baseMixins.extend().extend({
     onBlur(e) {
       e && this.$emit("blur", e);
     },
-
-    // onChipInput(item) {
-    //   if (this.multiple) this.selectItem(item);
-    //   else this.setValue(null); // If all items have been deleted,
-    //   // open `v-menu`
-
-    //   if (this.selectedItems.length === 0) {
-    //     this.isMenuActive = true;
-    //   } else {
-    //     this.isMenuActive = false;
-    //   }
-
-    //   this.selectedIndex = -1;
-    // },
 
     onClick(e) {
       if (!this.isInteractive) return;
@@ -1033,24 +874,6 @@ export default baseMixins.extend().extend({
 
       if (keyCode === keyCodes.space) return this.onSpaceDown(e);
     },
-
-    // onMenuActiveChange() {
-    //   // If menu is closing and mulitple
-    //   // or menuIndex is already set
-    //   // skip menu index recalculation
-    //   if ((this.multiple && !val) || this.getMenuIndex() > -1) return;
-    //   const menu = this.$refs.menu;
-    //   if (!menu || !this.isDirty) return; // When menu opens, set index of first active item
-
-    //   this.$refs.menu.getTiles();
-
-    //   for (let i = 0; i < menu.tiles.length; i++) {
-    //     if (menu.tiles[i].getAttribute("aria-selected") === "true") {
-    //       this.setMenuIndex(i);
-    //       break;
-    //     }
-    //   }
-    // },
 
     onMouseUp(e) {
       // eslint-disable-next-line
@@ -1197,26 +1020,6 @@ export default baseMixins.extend().extend({
     setMenuIndex(index) {
       this.$refs.menu && (this.$refs.menu.listIndex = index);
     },
-
-    // setSelectedItems() {
-    //   const selectedItems = [];
-    //   const values =
-    //     !this.multiple || !Array.isArray(this.internalValue)
-    //       ? [this.internalValue]
-    //       : this.internalValue;
-
-    //   for (const value of values) {
-    //     const index = this.allItems.findIndex((v) =>
-    //       this.valueComparator(this.getValue(v), this.getValue(value))
-    //     );
-
-    //     if (index > -1) {
-    //       selectedItems.push(this.allItems[index]);
-    //     }
-    //   }
-
-    //   this.selectedItems = selectedItems;
-    // },
 
     setSelectedItems2(level) {
       const selectedItems = [];

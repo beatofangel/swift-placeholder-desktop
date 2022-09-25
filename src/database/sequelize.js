@@ -1,5 +1,5 @@
 const sqlite3 = require('sqlite3')
-const { Sequelize, DataTypes, QueryTypes } = require('sequelize')
+const { Sequelize, DataTypes, QueryTypes, Op } = require('sequelize')
 const cls = require('cls-hooked')
 const namespace = cls.createNamespace('swift-placeholder-namespace')
 Sequelize.useCLS(namespace)
@@ -9,9 +9,6 @@ const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: 'database/userdata.db',
   logging: console.log,
-  sync: {
-    alter: process.env.NODE_ENV !== 'production'
-  }
 })
 
 // try {
@@ -172,6 +169,25 @@ TemplateModel.belongsTo(BusinessCategoryModel, {
   foreignKey: 'bcId'
 })
 
+BusinessCategoryModel.hasMany(BusinessCategoryModel, {
+  as: 'children',
+  foreignKey: 'pid'
+})
+
+// BusinessCategoryModel.belongsTo(BusinessCategoryModel, {
+//   as: 'parent',
+//   foreignKey: 'pid'
+// })
+
+// BusinessCategoryModel.belongsToMany(BusinessCategoryModel, {
+//   as: 'parentBusinessCategories',
+//   foreignKey: {
+//     name: 'pid',
+//     allowNull: true
+//   },
+//   through: 'parent'
+// })
+
 // const isDevelopment = process.env.NODE_ENV !== 'production'
 // isDevelopment && sequelize.sync({ alter: true });
 
@@ -193,5 +209,6 @@ export function getModel(modelName) {
 
 export {
   sequelize,
-  QueryTypes
+  QueryTypes,
+  Op
 }

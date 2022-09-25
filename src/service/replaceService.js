@@ -2,7 +2,77 @@ const SQL = require('../database/sql/sql.json')
 const { get, list, runInternal } = require('./baseService')
 const { v4: uuidv4 } = require('uuid')
 const moment = require('moment')
-const { sequelize, QueryTypes, getModel } = require('../database/sequelize')
+const { sequelize, QueryTypes, Op, getModel } = require('../database/sequelize')
+
+// TODO 考虑通过SQL查询（二层嵌套），再映射
+export async function findBusinessCategoryCascaded() {
+  return await sequelize.transaction(tx => {
+    return getModel('BusinessCategory').findAll({
+      // where: {
+      //   id: {
+      //     [Op.ne]: '319f8bd1-0210-4a45-83d5-c6cdd01af2a5'
+      //   },
+      //   pid: {
+      //     [Op.eq]: '319f8bd1-0210-4a45-83d5-c6cdd01af2a5'
+      //   }
+      // },
+      // where: sequelize.where({
+      //     Model: getModel('BusinessCategory'),
+      //     field: 'pid'
+      //   }, Op.ne, sequelize.col('BusinessCategory.id')
+      // ),
+      where: {
+        [Op.and]: [
+          {
+            id: {
+              [Op.notIn]: sequelize.literal(`(SELECT root.id FROM BusinessCategories AS root WHERE root.pid == root.id)`)
+            }
+          },
+          {
+            pid: {
+              [Op.in]: sequelize.literal(`(SELECT root.id FROM BusinessCategories AS root WHERE root.pid == root.id)`)
+            }
+          },
+        ]
+        // id: {
+        //   [Op.notIn]: {
+        //     attributes: {
+        //       include: [
+        //         sequelize.literal(`SELECT ROOT.ID FROM BusinessCategory AS ROOT WHERE ROOT.PID == ROOT.ID`), 'rootId'
+        //       ]
+        //     },
+        //   }
+        // },
+        // pid: {
+        //   [Op.in]: {
+        //     attributes: {
+        //       include: [
+        //         sequelize.literal(`SELECT ROOT.ID FROM BusinessCategory AS ROOT WHERE ROOT.PID == ROOT.ID`), 'rootId'
+        //       ]
+        //     },
+        //   }
+        // }
+      },
+      order: [
+        ['sort'], [sequelize.col('children.sort')], [sequelize.col('children->children.sort')]
+      ],
+      attributes: [ 'id', 'name', 'icon' ],
+      include: {
+        model: getModel('BusinessCategory'),
+        as: 'children',
+        attributes: [ 'id', 'name', 'icon' ],
+        include: {
+          model: getModel('BusinessCategory'),
+          as: 'children',
+          attributes: [ 'id', 'name', 'icon' ],
+        }
+      }
+    }).then(result => {
+      console.log(result)
+      return result
+    })
+  })
+}
 
 export async function findBusinessCategoryByPid({ pid }) {
   return await sequelize.transaction(tx => {
