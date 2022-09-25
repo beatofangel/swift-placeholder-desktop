@@ -24,7 +24,7 @@ import { VIcon } from "vuetify/lib/components";
 /* @vue/component */
 
 export default mixins(Colorable, Themeable).extend({
-  name: "v-select-list",
+  name: "v-cascade-select-list",
   // https://github.com/vuejs/vue/issues/6872
   directives: {
     ripple,
@@ -62,56 +62,81 @@ export default mixins(Colorable, Themeable).extend({
       default: () => [],
     },
     maxHeight: Number,
-    scrollTo: Boolean,
+    isMenuActive: Boolean,
+    defaultItemCount: Number
+  },
+  mounted() {
+    if (this.isMenuActive) {
+      console.log('list mounted')
+      if (this.items.length <= this.defaultItemCount) {
+        this.$emit('update:scroll-top', true)
+        this.$emit('update:scroll-bottom', true)
+      } else {
+        if (this.$el.scrollTop == 0) {
+          this.$emit('update:scroll-top', true)
+          this.$emit('update:scroll-bottom', false)
+        } else {
+          this.$emit('update:scroll-top', false)
+          this.$emit('update:scroll-bottom', false)
+        }
+      }
+    }
   },
   watch: {
-    scrollTo: {
+    isMenuActive: {
       immediate: true,
       handler(val) {
         if (val) {
           setTimeout(() => {
-            if (!this.$el) return
-            if (this.$el.scrollHeight <= 48 * 5) {
-              console.log('清单高度不足', this.$el.scrollHeight)
-              this.$emit('scrollTop', true)
-              this.$emit('scrollBottom', true)
-            } else {
-              if (this.$el.scrollTop == 0) {
-                console.log('清单最顶部', this.$el.scrollTop)
-                this.$emit('scrollTop', true)
-              } else {
-                this.$emit('scrollTop', false)
-                this.$emit('scrollBottom', false)
-              }
+            if (!this.$el) {
+              console.log('isMenuActive watch: element not ready')
+              return
             }
-            const selectedDom = this.$el.querySelector('div[aria-selected="true"]')
-            selectedDom && selectedDom.scrollIntoView()
-          }, 100);
+            if (this.items.length > this.defaultItemCount) {
+              const selectedDom = this.$el.querySelector('div.v-list-item--active')
+              const target = Number(selectedDom.ariaRowIndex) * 48 + 48
+              console.log('scroll to', target)
+              this.$vuetify.goTo(target, { container: `.noScrollBar-${this.level}`, easing: 'easeInOutCubic', offset: -16 })
+            }
+            // selectedDom && this.$nextTick(() => selectedDom.scrollIntoView()) // TODO 使用({ behavior: "smooth" }))后滚动失效
+            // if (this.$el.scrollTop == 0) {
+            //   this.$emit('update:scroll-top', true)
+            // }
+            // if (this.$el.scrollHeight <= 48 * 5) {
+            //   this.$emit('update:scroll-top', true)
+            //   this.$emit('update:scroll-bottom', true)
+            // } else {
+            //   if (this.$el.scrollTop == 0) {
+            //     this.$emit('update:scroll-top', true)
+            //     this.$emit('update:scroll-bottom', false)
+            //   } else {
+            //     this.$emit('update:scroll-top', false)
+            //     this.$emit('update:scroll-bottom', false)
+            //   }
+            // }
+          }, 200);
         }
       }
     },
     items: {
       deep: true,
-      immediate: true,
+      // immediate: true,
       handler() {
-        setTimeout(() => {
-          if (!this.$el) return
-          if (this.scrollTo) {
-            if (this.$el.scrollHeight <= 48 * 5) {
-              console.log('清单高度不足', this.$el.scrollHeight)
-              this.$emit('scrollTop', true)
-              this.$emit('scrollBottom', true)
+        if (this.isMenuActive) {
+          console.log('list mounted')
+          if (this.items.length <= this.defaultItemCount) {
+            this.$emit('update:scroll-top', true)
+            this.$emit('update:scroll-bottom', true)
+          } else {
+            if (this.$el.scrollTop == 0) {
+              this.$emit('update:scroll-top', true)
+              this.$emit('update:scroll-bottom', false)
             } else {
-              if (this.$el.scrollTop == 0) {
-                console.log('清单最顶部', this.$el.scrollTop)
-                this.$emit('scrollTop', true)
-              } else {
-                this.$emit('scrollTop', false)
-                this.$emit('scrollBottom', false)
-              }
+              this.$emit('update:scroll-top', false)
+              this.$emit('update:scroll-bottom', false)
             }
           }
-        }, 100);
+        }
       }
     }
   },
@@ -160,14 +185,14 @@ export default mixins(Colorable, Themeable).extend({
       });
     },
 
-    genFilteredText(text) {
-      text = text || "";
-      if (!this.searchInput || this.noFilter) return escapeHTML(text);
-      const { start, middle, end } = this.getMaskedCharacters(text);
-      return `${escapeHTML(start)}${this.genHighlight(middle)}${escapeHTML(
-        end
-      )}`;
-    },
+    // genFilteredText(text) {
+    //   text = text || "";
+    //   if (!this.searchInput || this.noFilter) return escapeHTML(text);
+    //   const { start, middle, end } = this.getMaskedCharacters(text);
+    //   return `${escapeHTML(start)}${this.genHighlight(middle)}${escapeHTML(
+    //     end
+    //   )}`;
+    // },
 
     genHeader(props) {
       return this.$createElement(
@@ -179,30 +204,30 @@ export default mixins(Colorable, Themeable).extend({
       );
     },
 
-    genHighlight(text) {
-      return `<span class="v-list-item__mask">${escapeHTML(text)}</span>`;
-    },
+    // genHighlight(text) {
+    //   return `<span class="v-list-item__mask">${escapeHTML(text)}</span>`;
+    // },
 
-    getMaskedCharacters(text) {
-      const searchInput = (this.searchInput || "")
-        .toString()
-        .toLocaleLowerCase();
-      const index = text.toLocaleLowerCase().indexOf(searchInput);
-      if (index < 0)
-        return {
-          start: text,
-          middle: "",
-          end: "",
-        };
-      const start = text.slice(0, index);
-      const middle = text.slice(index, index + searchInput.length);
-      const end = text.slice(index + searchInput.length);
-      return {
-        start,
-        middle,
-        end,
-      };
-    },
+    // getMaskedCharacters(text) {
+    //   const searchInput = (this.searchInput || "")
+    //     .toString()
+    //     .toLocaleLowerCase();
+    //   const index = text.toLocaleLowerCase().indexOf(searchInput);
+    //   if (index < 0)
+    //     return {
+    //       start: text,
+    //       middle: "",
+    //       end: "",
+    //     };
+    //   const start = text.slice(0, index);
+    //   const middle = text.slice(index, index + searchInput.length);
+    //   const end = text.slice(index + searchInput.length);
+    //   return {
+    //     start,
+    //     middle,
+    //     end,
+    //   };
+    // },
 
     genTile({ item, index, disabled = null, value = false }) {
       if (!value) value = this.hasItem(item);
@@ -216,6 +241,7 @@ export default mixins(Colorable, Themeable).extend({
           // Default behavior in list does not
           // contain aria-selected by default
           "aria-selected": String(value),
+          "aria-rowindex": index,
           id: `list-item-${this._uid}-${index}`,
           role: "option",
         },
@@ -260,8 +286,9 @@ export default mixins(Colorable, Themeable).extend({
         : scopedSlot;
     },
     /*eslint no-unused-vars: "off"*/
-    genTileContent(item, index = 0) {
-      const innerHTML = this.genFilteredText(this.getText(item));
+    genTileContent(item, index = -1) {
+      const innerHTML = index == -1 ? this.getText(item) : `${item.sort} - ${this.getText(item)}`
+      // const innerHTML = this.genFilteredText(this.getText(item));
       // const children = []
       // item.children && children.push(this.$createElement(VSpacer), this.$createElement(VIcon, { domProps: 'mdi-chevron-right' }))
       return this.$createElement(VListItemContent, [

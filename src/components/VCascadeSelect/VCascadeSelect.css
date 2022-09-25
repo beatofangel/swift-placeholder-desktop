@@ -1,3 +1,6 @@
 .noScrollBar::-webkit-scrollbar {
   display: none;
 }
+.noBgColorIcon::after {
+  background-color: transparent !important;
+}

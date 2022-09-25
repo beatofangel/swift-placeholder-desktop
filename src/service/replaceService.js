@@ -4,7 +4,6 @@ const { v4: uuidv4 } = require('uuid')
 const moment = require('moment')
 const { sequelize, QueryTypes, Op, getModel } = require('../database/sequelize')
 
-// TODO 考虑通过SQL查询（二层嵌套），再映射
 export async function findBusinessCategoryCascaded() {
   return await sequelize.transaction(tx => {
     return getModel('BusinessCategory').findAll({
@@ -56,20 +55,39 @@ export async function findBusinessCategoryCascaded() {
       order: [
         ['sort'], [sequelize.col('children.sort')], [sequelize.col('children->children.sort')]
       ],
-      attributes: [ 'id', 'name', 'icon' ],
+      attributes: [ 'id', 'name', 'icon', 'sort' ],
       include: {
         model: getModel('BusinessCategory'),
         as: 'children',
-        attributes: [ 'id', 'name', 'icon' ],
+        attributes: [ 'id', 'name', 'icon', 'sort' ],
         include: {
           model: getModel('BusinessCategory'),
           as: 'children',
-          attributes: [ 'id', 'name', 'icon' ],
+          attributes: [ 'id', 'name', 'icon', 'sort' ],
         }
       }
     }).then(result => {
-      console.log(result)
-      return result
+      const formatted = []
+      const format = (items, formatted) => {
+        items.forEach(item => {
+          const dataValues = item.dataValues
+          const children = item.children
+          const formattedItem = {
+            id: dataValues.id,
+            name: dataValues.name,
+            icon: dataValues.icon,
+            sort: dataValues.sort
+          }
+          formatted.push(formattedItem)
+          if (children && children.length) {
+            formattedItem.children = []
+            format(children, formattedItem.children)
+          }
+        })
+      }
+      format(result, formatted)
+
+      return formatted
     })
   })
 }
@@ -78,7 +96,10 @@ export async function findBusinessCategoryByPid({ pid }) {
   return await sequelize.transaction(tx => {
     return getModel('BusinessCategory').findAll({
       where: {
-        pid: pid
+        pid: pid,
+        id: {
+          [Op.ne]: pid
+        }
       },
       order: [
         ['sort']

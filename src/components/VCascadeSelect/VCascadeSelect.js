@@ -27,7 +27,8 @@ import {
 
 import mixins from "vuetify/lib/util/mixins";
 import { VCard, VCardText } from "vuetify/lib/components/VCard";
-import { VIcon } from "vuetify/lib/components";
+import { VDivider, VIcon } from "vuetify/lib/components";
+import goTo from "vuetify/lib/services/goto";
 // import { VIcon, VList, VListItem, VListItemGroup, VListItemTitle, VListItemAction, VListItemContent } from "vuetify/lib/components";
 // import { isNumber } from "lodash"
 export const defaultMenuProps = {
@@ -35,14 +36,15 @@ export const defaultMenuProps = {
   closeOnContentClick: false,
   disableKeys: true,
   openOnClick: false,
-  maxHeight: 304,
+  maxHeight: 296,//304,
 }; // Types
 
 const baseMixins = mixins(VTextField, Comparable, Dependent, Filterable);
 /* @vue/component */
+const defaultItemCount = 5
 
 export default baseMixins.extend().extend({
-  name: "v-select",
+  name: "v-cascade-select",
   directives: {
     ClickOutside,
     Scroll
@@ -121,6 +123,7 @@ export default baseMixins.extend().extend({
       level1ScrollBottom: true,
       level2ScrollBottom: true,
       level3ScrollBottom: true,
+      colors: [ 'primary', 'light-green', 'orange' ]
     };
   },
 
@@ -258,11 +261,23 @@ export default baseMixins.extend().extend({
     }
   },
   watch: {
-    levelScrollTop(val) {
-      console.log('levelScrollTop', ...val)
+    level1ScrollTop(val) {
+      console.log('level1ScrollTop', val)
     },
-    levelScrollBottom(val) {
-      console.log('levelScrollBottom', ...val)
+    level2ScrollTop(val) {
+      console.log('level2ScrollTop', val)
+    },
+    level3ScrollTop(val) {
+      console.log('level3ScrollTop', val)
+    },
+    level1ScrollBottom(val) {
+      console.log('level1ScrollBottom', val)
+    },
+    level2ScrollBottom(val) {
+      console.log('level2ScrollBottom', val)
+    },
+    level3ScrollBottom(val) {
+      console.log('level3ScrollBottom', val)
     },
     internalValue(val, oVal) {
       console.log('internalValue changed', val, oVal)
@@ -292,6 +307,45 @@ export default baseMixins.extend().extend({
     },
   },
   methods: {
+    listScroll(container, up) {
+      const current = document.querySelector(container).scrollTop
+      const target = current + 48 + (up ? -48 * 3 : 48 * 3)
+      goTo(target, { container: container, easing: 'easeInOutCubic', offset: -16 })
+    },
+    listScrollUp(container) {
+      this.listScroll(container, true)
+    },
+    listScrollDown(container) {
+      this.listScroll(container, false)
+    },
+    // 计算属性必须要直接更新对应的data值才能确保刷新
+    updateScrollTop(level, top) {
+      switch (level) {
+        case 0:
+          this.level1ScrollTop = top
+          break
+        case 1:
+          this.level2ScrollTop = top
+          break
+        case 2:
+          this.level3ScrollTop = top
+          break
+      }
+    },
+    // 计算属性必须要直接更新对应的data值才能确保刷新
+    updateScrollBottom(level, bottom) {
+      switch (level) {
+        case 0:
+          this.level1ScrollBottom = bottom
+          break
+        case 1:
+          this.level2ScrollBottom = bottom
+          break
+        case 2:
+          this.level3ScrollBottom = bottom
+          break
+      }
+    },
     initSelectedItems(obj, level) {
       const path = [];
       const pathFinder = (obj, level) => {
@@ -536,7 +590,8 @@ export default baseMixins.extend().extend({
         props: {
           // action: this.multiple,
           level: level,
-          color: this.itemColor,
+          color: this.colors[level],
+          // color: this.itemColor,
           dense: this.dense,
           // hideSelected: this.hideSelected,
           items: this.levelItemsArray[level],
@@ -547,8 +602,9 @@ export default baseMixins.extend().extend({
           noDataText: "",
           selectedIndex: this.levelSelectedArray[level],
           selectedItems: this.selectedLevelItems[level],
-          scrollTo: this.isMenuActive,
+          isMenuActive: this.isMenuActive,
           maxHeight: defaultMenuProps.maxHeight,
+          defaultItemCount: defaultItemCount
           // selectedItems: this.selectedItems,
         },
         class: {
@@ -556,11 +612,11 @@ export default baseMixins.extend().extend({
         },
         on: {
           select: this.selectItem2,
-          scrollTop: (top) => {
-            this.$nextTick(() => this.levelScrollTop[level] = top)
+          "update:scroll-top": (top) => {
+            this.updateScrollTop(level, top)
           },
-          scrollBottom: (bottom) => {
-            this.$nextTick(() => this.levelScrollBottom[level] = bottom)
+          "update:scroll-bottom": (bottom) => {
+            this.updateScrollBottom(level, bottom)
           }
         },
         scopedSlots: {
@@ -574,6 +630,10 @@ export default baseMixins.extend().extend({
       const list = [];
       for (let i = 0; i < depth; i++) {
         const level = i
+        const data = this.listData2(level)
+        if (i > 0) {
+          list.push(this.$createElement(VDivider, { props: { vertical: true } }))
+        }
         list.push(
           this.$createElement(
             VCard,
@@ -588,6 +648,7 @@ export default baseMixins.extend().extend({
                 "col-6": depth == 2,
                 "col-4": depth == 3,
                 "py-1": true,
+                "mx-1": true,
               },
               style: {
                 display: "flex",
@@ -595,42 +656,30 @@ export default baseMixins.extend().extend({
               },
             },
             [
-              this.$createElement("div", { style: { "text-align": "center" } }, [this.$createElement(VIcon, { attrs: { disabled: this.levelScrollTop[level], color: 'red' } }, "mdi-menu-up")]),
+              this.$createElement("div", { style: { "text-align": "center", cursor: this.levelScrollTop[level] ? "auto" : "pointer", height: "24px" }, on: { click: () => this.listScrollUp(`.noScrollBar-${level}`) } }, [this.$createElement(VIcon, { class: { noBgColorIcon: true }, props: { disabled: this.levelScrollTop[level], color: this.colors[level] } }, this.levelScrollTop[level] ? "mdi-blank" : "mdi-chevron-up")]),
               this.$createElement(
                 VCardText,
                 {
                   style: { "flex-grow": 1 },
-                  class: { "pa-0": true, "noScrollBar": true, "overflow-y-auto": true },
+                  class: { "pa-0": true, "noScrollBar": true, [`noScrollBar-${level}`]: true, "overflow-y-auto": true },
                   directives: [{
                     name: "scroll",
                     modifiers: { self: true },
                     value: (e) => {
                       if (e.target.scrollTop == 0) {
-                        this.$nextTick(() => {
-                          this.$set(this.levelScrollTop, level, true)
-                          this.$forceUpdate()
-                        })
+                        this.updateScrollTop(level, true)
                       } else if (e.target.scrollTop == (e.target.children[0].clientHeight - e.target.clientHeight)) {
-                        this.$nextTick(() => {
-                          this.$set(this.levelScrollBottom, level, true)
-                          this.$forceUpdate()
-                        })
+                        this.updateScrollBottom(level, true)
                       } else {
-                        this.levelScrollTop[level] && this.$nextTick(() => {
-                          this.$set(this.levelScrollTop, level, false)
-                          this.$forceUpdate()
-                        })
-                        this.levelScrollBottom[level] && this.$nextTick(() => {
-                          this.$set(this.levelScrollBottom, level, false)
-                          this.$forceUpdate()
-                        })
+                        this.updateScrollTop(level, false)
+                        this.updateScrollBottom(level, false)
                       }
                     }
                   }]
                 },
-                [this.$createElement(VCascadeSelectList, { ...this.listData2(i) })]
+                [this.$createElement(VCascadeSelectList, { ...data })]
               ),
-              this.$createElement("div", { style: { "text-align": "center" } }, [this.$createElement(VIcon, { attrs: { disabled: this.levelScrollBottom[level], color: 'red' } }, "mdi-menu-down")]),
+              this.$createElement("div", { style: { "text-align": "center", cursor: this.levelScrollBottom[level] ? "auto" : "pointer", height: "24px" }, on: { click: () => this.listScrollDown(`.noScrollBar-${level}`) } }, [this.$createElement(VIcon, { class: { noBgColorIcon: true }, props: { disabled: this.levelScrollBottom[level], color: this.colors[level] } }, this.levelScrollBottom[level] ? "mdi-blank" : "mdi-chevron-down")]),
             ]
           )
         );
@@ -641,7 +690,7 @@ export default baseMixins.extend().extend({
         [
           this.$createElement(
             VCardText,
-            { class: { "d-flex": true, "flex-nowrap": true, "pa-0": true } },
+            { class: { "d-flex": true, "flex-nowrap": true, "py-0": true, "pl-0": true, "pr-5": true } },
             list
           ),
         ]
@@ -687,63 +736,28 @@ export default baseMixins.extend().extend({
 
     genSelections2() {
       const children = [];
-      if (
-        Array.isArray(this.levelSelectedArray[0]) &&
-        this.levelSelectedArray[0].length > 0
-      ) {
-        const item1 = this.level1Items[this.levelSelectedArray[0][0]];
-        children.push(
-          this.$createElement(
-            VChip,
-            { props: { label: true, outlined: true, color: "error" } },
-            [
-              this.$createElement(VIcon, { props: { left: true } }, item1.icon),
-              item1[this.itemText],
-            ]
-          )
-        );
-      }
-      if (
-        Array.isArray(this.levelSelectedArray[1]) &&
-        this.levelSelectedArray[1].length > 0
-      ) {
-        const item2 = this.level2Items[this.levelSelectedArray[1][0]];
-        children.push(
-          this.$createElement(VIcon, {
-            class: { mdi: true, "mdi-chevron-right": true },
-          })
-        );
-        children.push(
-          this.$createElement(
-            VChip,
-            { props: { label: true, outlined: true, color: "warning" } },
-            [
-              this.$createElement(VIcon, { props: { left: true } }, item2.icon),
-              item2[this.itemText],
-            ]
-          )
-        );
-      }
-      if (
-        Array.isArray(this.levelSelectedArray[2]) &&
-        this.levelSelectedArray[2].length > 0
-      ) {
-        const item3 = this.level3Items[this.levelSelectedArray[2][0]];
-        children.push(
-          this.$createElement(VIcon, {
-            class: { mdi: true, "mdi-chevron-right": true },
-          })
-        );
-        children.push(
-          this.$createElement(
-            VChip,
-            { props: { label: true, outlined: true, color: "success" } },
-            [
-              this.$createElement(VIcon, { props: { left: true } }, item3.icon),
-              item3[this.itemText],
-            ]
-          )
-        );
+      for (let i = 0; i < 3; i++) {
+        if (
+          Array.isArray(this.levelSelectedArray[i]) &&
+          this.levelSelectedArray[i].length > 0
+        ) {
+          i && children.push(
+            this.$createElement(VIcon, {
+              class: { mdi: true, "mdi-chevron-right": true },
+            })
+          );
+          const item = this.levelItemsArray[i][this.levelSelectedArray[i][0]];
+          children.push(
+            this.$createElement(
+              VChip,
+              { props: { label: true, outlined: false, color: `${this.colors[i]} lighten-1`, dark: true } },
+              [
+                this.$createElement(VIcon, { props: { left: true } }, item.icon),
+                `${item.sort} - ${this.getText(item)}`,
+              ]
+            )
+          );
+        }
       }
 
       return this.$createElement(
@@ -848,6 +862,7 @@ export default baseMixins.extend().extend({
           keyCodes.enter,
         ].includes(keyCode)
       ) {
+        // TODO 无法触发menu的goTo，原因是menu已无法滚动，需要修改为控制list。（可能需要重写menu）
         this.$nextTick(() => {
           menu.changeListIndex(e);
           this.$emit("update:list-index", menu.listIndex);
@@ -961,6 +976,8 @@ export default baseMixins.extend().extend({
             menu.lastTile();
             break;
         }
+        console.log(menu.activeTile)
+        // menu.activeTile.scrollIntoView()
 
         this.selectItem(this.allItems[this.getMenuIndex()]);
       });

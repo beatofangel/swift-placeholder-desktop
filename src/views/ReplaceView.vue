@@ -299,29 +299,9 @@ export default {
   mounted() {
     window.replaceService.findBusinessCategoryCascaded().then(data => {
       console.log(data)
-      
-      const formatted = []
-      const format = (items, formatted) => {
-        items.forEach(item => {
-          const dataValues = item.dataValues
-          const children = item.children
-          const formattedItem = {
-            id: dataValues.id,
-            name: dataValues.name,
-            icon: dataValues.icon
-          }
-          formatted.push(formattedItem)
-          if (children && children.length) {
-            formattedItem.children = []
-            format(children, formattedItem.children)
-          }
-        })
-      }
-      format(data, formatted)
-      this.businessCategoryOptions = formatted
-
+      this.businessCategoryOptions = data
     })
-    window.commonService.find('BusinessCategory', { pid: null }).then(data => {
+    window.commonService.find('BusinessCategory', { pid: '319f8bd1-0210-4a45-83d5-c6cdd01af2a5' }).then(data => {
       console.log('BusinessCategory', data)
       this.categoryOptions.primary = data
       this.categoryOptions2.push(data)
@@ -665,7 +645,7 @@ export default {
       businessCategoryOptions: [
       ],
       formData: {
-        businessCategory: null, //'67a9e7cd-506b-473a-b8fa-f19fe0743033',
+        businessCategory: '85b4a210-d234-4791-bdd8-19a365ea222a',
         categories: {
           primary: null,
           secondary: null,
