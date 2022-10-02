@@ -1,5 +1,17 @@
-.noScrollBar::-webkit-scrollbar {
-  display: none;
+.auto-hide-scrollbar {
+  mask-image: linear-gradient(to top, transparent, black),
+    linear-gradient(to left, transparent 4px, black 4px);
+  mask-size: 100% 20000px;
+  mask-position: left bottom;
+  -webkit-mask-image: linear-gradient(to top, transparent, black),
+    linear-gradient(to left, transparent 4px, black 4px);
+  -webkit-mask-size: 100% 20000px;
+  -webkit-mask-position: left bottom;
+  transition: mask-position 0.5s, -webkit-mask-position 0.5s;
+}
+.auto-hide-scrollbar:hover {
+  mask-position: left top;
+  -webkit-mask-position: left top;
 }
 .noBgColorIcon::after {
   background-color: transparent !important;

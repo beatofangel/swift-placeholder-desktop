@@ -12,7 +12,7 @@
       <v-form @submit.prevent="onSave">
         <v-card flat tile>
           <v-card-text>
-            <v-row>
+            <!-- <v-row>
               <v-col>
                 <v-text-field
                   disabled
@@ -23,7 +23,7 @@
                 >
                 </v-text-field>
               </v-col>
-            </v-row>
+            </v-row> -->
             <v-row>
               <v-col>
                 <validation-provider
@@ -141,7 +141,7 @@ export default {
         id: this.formData.id,
         name: this.formData.name,
         path: this.formData.path,
-        bcid: this.bcId,
+        bcId: this.bcId,
         ignoreSaveFile: this.path == this.formData.path
       }
       this.isEdit || (data.insert = true)

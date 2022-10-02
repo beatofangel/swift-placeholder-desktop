@@ -15,21 +15,18 @@
       user-select: none;
     }
   
-    #app {
+    /* #app {
       height: calc(100vh);
       overflow-y: auto;
       opacity: 0;
       animation-duration: 1s;
       animation-fill-mode: forwards;
-    }
+    } */
   
-    .website-loading {
+    /* .website-loading {
       height: calc(80vh);
       width: calc(100vw);
-      /* display: flex;
-        align-items: center; */
       display: table-cell;
-      /* padding-bottom: 200px; */
       text-align: center;
       vertical-align: middle;
     }
@@ -60,15 +57,15 @@
   
     .website-loading-fadein {
       animation-name: website-loading-fadein;
-    }
+    } */
   </style>
   <body>
     <noscript>
       <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
     </noscript>
-    <div class="website-loading website-loading-fadein">
+    <!-- <div class="website-loading website-loading-fadein">
       <img src="spinner.svg" />
-    </div>
+    </div> -->
     <div id="app"></div>
     <!-- built files will be auto injected -->
   </body>

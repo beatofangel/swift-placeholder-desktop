@@ -4,7 +4,10 @@ const {
   saveBusinessCategory,
   bulkSaveBusinessCategory,
   saveTemplate,
+  bulkSaveTemplate,
   savePlaceholder,
+
+  findTemplateByBcId,
   findBusinessCategoryByPid,
 } = require('./replaceService')
 
@@ -14,14 +17,16 @@ const listMethods = {
 }
 
 const saveMethods = {
-  saveTemplate,
   savePlaceholder,
 
   saveBusinessCategory,
   bulkSaveBusinessCategory,
+  saveTemplate,
+  bulkSaveTemplate
 }
 
 const findMethods = {
+  findTemplateByBcId,
   findBusinessCategoryByPid,
 }
 
@@ -29,6 +34,7 @@ const { upperFirst } = require('lodash')
 
 export async function find(modelName, conditions) {
   const methodName = `find${modelName}` + (conditions ? `By${Object.keys(conditions).map(upperFirst).join('And')}` : 'All')
+  console.log(methodName, conditions)
   return await findMethods[methodName](conditions)
 }
 

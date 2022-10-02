@@ -1,6 +1,9 @@
 <template>
-  <v-card>
-    <v-toolbar color="primary" dark>
+  <v-card :flat="flat">
+    <v-card-title v-if="hideToolBar" class="d-flex justify-center">
+      <span class="text-h5 ml-1 mt-1">{{ title }}清单</span>
+    </v-card-title>
+    <v-toolbar v-else color="primary" dark>
       <v-icon>mdi-format-list-bulleted</v-icon>
       <span class="text-h5 ml-1 mt-1">{{ title }}清单</span>
       <v-spacer></v-spacer>
@@ -34,21 +37,21 @@
           <template v-for="(item, index) in slotItems">
             <transition :name="!drag ? 'flip-list' : null" type="transition" :key="item.name">
               <tr>
-                <template v-for="{ value } in headers">
+                <template v-for="{ value, cellClass } in headers">
                   <td v-if="value == 'data-table-select'" :key="value">
                     <v-icon :color="isSelected(item) ? 'primary' : ''" @click="select(item, !isSelected(item))">{{ isSelected(item) ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank'}}</v-icon>
                   </td>
                   <td v-if="value == 'index'" class="text-start" :key="`item.${value}`">
                     {{ index + 1 }}
                   </td>
-                  <td v-if="!['index', 'data-table-select', 'actions'].includes(value)" class="text-start" :key="`item.${value}`">
+                  <td v-if="!['index', 'data-table-select', 'actions'].includes(value)" :class="`text-start ${cellClass || ''}`" :key="`item.${value}`">
                     <slot v-if="$scopedSlots[`item.${value}`]" :name="`item.${value}`" v-bind:item="item" v-on="$scopedSlots[`item.${value}`]"></slot>
                     <template v-else>{{ item[value] }}</template>
                   </td>
                   <td v-if="value == 'actions'" class="text-center" :key="`item.${value}`">
                     <v-row class="actions justify-center">
                       <v-icon class="edit" @click="showEdit({...item, isEdit: true})">mdi-pencil</v-icon>
-                      <v-icon class="delete" @click="handleDelete({ ...item, delete: true})">mdi-delete</v-icon>
+                      <v-icon class="delete" @click="showConfirm({ ...item, delete: true})">mdi-delete</v-icon>
                     </v-row>
                   </td>
                 </template>
@@ -65,12 +68,23 @@
     </v-data-table>
     <v-divider></v-divider>
     <v-card-actions>
-      <v-btn v-if="showSelect" color="primary" :disabled="items.length == 0 || selected.length == 0" @click="handleSelect">选择</v-btn>
+      <v-btn v-if="showSelect && !hideSelectBtn" color="primary" :disabled="items.length == 0 || selected.length == 0" @click="handleSelect">选择</v-btn>
       <v-spacer></v-spacer>
-      <v-btn color="success" @click="showEdit()"><v-icon>mdi-plus</v-icon></v-btn>
+      <v-btn v-if="!hideCreate" color="success" @click="showEdit()"><v-icon>mdi-plus</v-icon></v-btn>
     </v-card-actions>
     <v-dialog width="500" v-model="dialog.showDetail">
       <slot v-bind="item" :title="title" :visible="dialog.showDetail" :cancel="handleCancel" :save="handleSave"></slot>
+    </v-dialog>
+    <v-dialog width="500" v-model="dialog.showConfirm">
+      <v-card>
+        <v-card-title class="text-h5">{{ `确定要删除该${this.title}？` }}</v-card-title>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="primary" text @click="dialog.showConfirm = false">取消</v-btn>
+          <v-btn color="error" @click="handleDelete({ ...item, delete: true})">确定</v-btn>
+          <v-spacer></v-spacer>
+        </v-card-actions>
+      </v-card>
     </v-dialog>
   </v-card>
 </template>
@@ -84,17 +98,22 @@ export default {
       default: ()=>null
     },
     model: String,
+    flat: Boolean,
+    hideToolBar: Boolean,
+    hideSelectBtn: Boolean,
     title: String,
     headers: Array,
     itemNames: Array,
     visible: Boolean,
     selectedId: String,
+    hideCreate: Boolean,
     showSelect: Boolean,
+    cascade: Boolean,
     noData: {
       type: String,
       default: '没有数据'
     },
-    preInterceptor: {
+    interceptor: {
       type: Object,
       default: ()=>{
         return {
@@ -114,13 +133,36 @@ export default {
       immediate: true,
       handler(val) {
         if (val) {
-          console.log(this.title, this.model, this.condition)
-          window.commonService.find(this.model, this.condition).then(data => {
+          this.visible && this.condition && window.commonService.find(this.model, this.condition).then(data => {
             this.items = data
             this.$set(this, 'selected', this.selectedId ? this.items.filter(item=>item.id==this.selectedId) : [])
+          }).catch(err => {
+            console.log(err)
+            this.$toast.error(`${this.title}读取失败！`);
           })
         }
       }
+    },
+    condition: {
+      deep: true,
+      handler(newVal, oldVal) {
+        if (!this.cascade) return
+        console.log("condition", newVal, oldVal)
+        this.$set(this, 'selected', [])
+        if (newVal) {
+          window.commonService.find(this.model, this.condition).then(data => {
+            this.items = data
+          }).catch(err => {
+            console.log(err)
+            this.$toast.error(`${this.title}读取失败！`);
+          })
+        } else {
+          this.items= []
+        }
+      }
+    },
+    selected(val) {
+      this.$emit('selectionChange', val)
     }
   },
   computed: {
@@ -130,10 +172,11 @@ export default {
     },
   },
   methods: {
+    // TODO 考虑如何处理pid：第一级拿不到，后面两级当没有数据时也拿不到？？
     createNewItem() {
       const rst = {}
       this.itemNames.forEach(e=>{
-        rst[e] = e == 'sort' ? (this.items.length > 0 ? this.items.map(i=>i.sort).sort((a,b)=>b-a)[0] + 1 : 1) : null
+        rst[e] = e == 'ordinal' ? (this.items.length > 0 ? this.items.map(i=>i.ordinal).sort((a,b)=>b-a)[0] + 1 : 1) : null
       })
       return rst
     },
@@ -144,9 +187,10 @@ export default {
       this.drag = false
       let targetArr = []
       this.items.forEach((item, index) => {
-        const oriSort = index + 1
-        if (oriSort != item.sort) {
-          item.sort = oriSort
+        const oriOrdinal = index + 1
+        if (oriOrdinal != item.ordinal) {
+          item.ordinal = oriOrdinal
+          item.sort = true
           targetArr.push(item)
         }
       })
@@ -154,18 +198,14 @@ export default {
       targetArr.length > 0 && window.commonService.bulkSave(this.model, ...targetArr).then(()=>{
         window.commonService.find(this.model, this.condition).then(data => {
           this.items = data
+        }).catch(err => {
+          console.log(err)
         })
         this.$emit('change')
-        window.ipc.send('notification', {
-          title: "提示",
-          body: `${this.title}更新成功！`
-        })
+        // this.$toast.success(`${this.title}更新成功！`)
       }).catch(err => {
         console.error(err)
-        window.ipc.send('notification', {
-          title: "错误",
-          body: `${this.title}更新失败！`
-        })
+        this.$toast.error(`${this.title}更新失败！`)
       })
     },
     onClose() {
@@ -175,43 +215,44 @@ export default {
       this.item = JSON.parse(JSON.stringify(item || this.createNewItem()))
       this.dialog.showDetail = true
     },
+    showConfirm(item) {
+      this.item = JSON.parse(JSON.stringify(item))
+      this.dialog.showConfirm = true
+    },
     handleDelete(item) {
-      this.preInterceptor.delete(item).then(preResult=>{
-        if (preResult) {
-          const sort = item.sort
-          item.delete = true
-          let targetArr = [ item ]
-          for (const e of this.items) {
-            if (e.sort > sort) {
-              const moveUpItem = {}
-              for (const key in e) {
-                moveUpItem[key] = key == 'sort' ? (e.sort - 1) : e[key]
-              }
-              targetArr.push(moveUpItem)
-            }
+      const path = item.path
+      const ordinal = item.ordinal
+      item.delete = true
+      let targetArr = [ item ]
+      for (const e of this.items) {
+        if (e.ordinal > ordinal) {
+          const moveUpItem = {}
+          for (const key in e) {
+            moveUpItem[key] = key == 'ordinal' ? (e.ordinal - 1) : e[key]
           }
-          window.commonService.save(this.model, ...targetArr).then(()=>{
-            // this.dialog.showDetail = false
-            window.commonService.find(this.model, this.condition).then(data => {
-              this.items = data
-            })
-            this.$emit('change')
-            window.ipc.send('notification', {
-              title: "提示",
-              body: `${this.title}删除成功！`
-            })
-          }).catch(err => {
-            console.error(err)
-            window.ipc.send('notification', {
-              title: "错误",
-              body: `${this.title}删除失败！`
-            })
-          })
+          moveUpItem.sort = true
+          targetArr.push(moveUpItem)
         }
+      }
+      
+      window.commonService.bulkSave(this.model, ...targetArr).then(()=>{
+        // this.dialog.showDetail = false
+        window.commonService.find(this.model, this.condition).then(data => {
+          this.items = data
+        })
+        this.$emit('change')
+        this.$toast.success(`${this.title}删除成功！`)
+      }).catch(err => {
+        console.error(err)
+        this.$toast.error(`${this.title}删除失败！`)
+      }).finally(() => {
+        this.interceptor.delete(path)
+        this.dialog.showConfirm = false
+        this.item = null
       })
     },
     handleSave(item) {
-      this.preInterceptor.save(item).then(preResult=>{
+      this.interceptor.save(item).then(preResult=>{
         for (const key in preResult) {
           item[key] && (item[key] = preResult[key])
         }
@@ -221,16 +262,10 @@ export default {
             this.items = data
           })
           this.$emit('change')
-          window.ipc.send('notification', {
-            title: "提示",
-            body: `${this.title}保存成功！`
-          })
+          this.$toast.success(`${this.title}保存成功！`)
         }).catch(err => {
           console.error(err)
-          window.ipc.send('notification', {
-            title: "错误",
-            body: `${this.title}保存失败！`
-          })
+          this.$toast.error(`${this.title}保存失败！`)
         })
       })
     },
@@ -247,12 +282,13 @@ export default {
         id: '',
         name: '',
         icon: null,
-        sort: 0,
+        ordinal: 0,
         isEdit: true,
       },
       items: [],
       dialog: {
-        showDetail: false
+        showDetail: false,
+        showConfirm: false,
       },
       selected: [],
       drag: false

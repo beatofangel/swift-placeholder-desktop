@@ -1,7 +1,8 @@
 'use strict'
 
 import { app, protocol, BrowserWindow, ipcMain, screen, dialog, Notification, shell, remote } from 'electron'
-import fs, { readFileSync } from 'fs'
+import fs from 'fs'
+import fsPromises from 'fs/promises'
 import Path from 'path'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import _ from 'lodash'
@@ -10,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid'
 import moment from 'moment'
 import numeral from 'numeral'
 import { sequelize } from './database/sequelize'
+import './store'
 
 // import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -47,7 +49,7 @@ async function createWindow() {
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
       nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION,
       contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION,
-      webSecurity: false
+      // webSecurity: false
     }
   })
 
@@ -224,9 +226,10 @@ ipcMain.handle('saveFile', async (event, { srcPath, folder, type }) => {
   }
 })
 
-ipcMain.handle('deleteFile', async (event, { path }) => {
-  fs.existsSync(path) && fs.rmSync(path)
-  return true
+ipcMain.handle('deleteFile', async (event, { filePath }) => {
+  if (fs.existsSync(filePath)) {
+    return fsPromises.rm(filePath)
+  }
 })
 
 // ipcMain.on('previewPdf', async (event, { id, path: tplPath }) => {
@@ -307,10 +310,8 @@ ipcMain.on('previewPdf', async (event, { id, path: tplPath, data }) => {
               console.log(error.toString())
             } else {
               const oriPdf = Path.join(outputDir, `${tempUuid}.pdf`)
-              event.sender.send('previewPdf', { id: id, path: oriPdf })
-              // const outputPdf = Path.join(outputDir, `${id}.pdf`)
-              // fs.renameSync(oriPdf, outputPdf)
-              // event.sender.send('fromMain', { id: id, data: buffer })
+              const buffer = fs.readFileSync(oriPdf)
+              event.sender.send('previewPdf', { id: id, path: oriPdf, data: buffer })
             }
           })
         } catch (error) {

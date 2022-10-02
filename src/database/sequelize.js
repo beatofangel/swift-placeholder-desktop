@@ -9,6 +9,7 @@ const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: 'database/userdata.db',
   logging: console.log,
+  sync: process.env.NODE_ENV !== 'production'
 })
 
 // try {
@@ -25,9 +26,9 @@ const BusinessCategoryModel = sequelize.define('BusinessCategory', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
-  pid: {
-    type: DataTypes.UUID,
-  },
+  // pid: {
+  //   type: DataTypes.UUID,
+  // },
   name: {
     type: DataTypes.TEXT,
     unique: true,
@@ -36,9 +37,10 @@ const BusinessCategoryModel = sequelize.define('BusinessCategory', {
   icon: {
     type: DataTypes.TEXT
   },
-  sort: {
+  ordinal: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
+    defaultValue: 0
   },
 })
 
@@ -49,9 +51,6 @@ const TemplateModel = sequelize.define('Template', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
-  // bcId: {
-  //   type: DataTypes.UUID,
-  // },
   name: {
     type: DataTypes.TEXT,
     unique: true,
@@ -59,6 +58,20 @@ const TemplateModel = sequelize.define('Template', {
   },
   path: {
     type: DataTypes.TEXT,
+    allowNull: false
+  },
+})
+
+/** 占位符分组Model */
+const PlaceholderGroupModel = sequelize.define('PlaceholderGroup', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  name: {
+    type: DataTypes.TEXT,
+    unique: true,
     allowNull: false
   },
 })
@@ -84,109 +97,109 @@ const PlaceholderItemModel = sequelize.define('PlaceholderItem', {
   },
 })
 
-/** 占位符分组Model */
-const PlaceholderGroupModel = sequelize.define('PlaceholderGroup', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true
-  },
-  name: {
-    type: DataTypes.TEXT,
-    unique: true,
-    allowNull: false
-  },
-})
-
 /** 分类与模板关系Model */
-const CatTplRelModel = sequelize.define('CatTplRel', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true
-  },
-  catId: {
-    type: DataTypes.TEXT,
-    allowNull: false
-  },
-  tplId: {
-    type: DataTypes.TEXT,
-    allowNull: false
-  },
-  sort: {
+const BcTplRelModel = sequelize.define('BcTplRel', {
+  ordinal: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
+    defaultValue: 0
   },
+}, {
+  hooks: {
+    // INSERT: 实现序号自增
+    beforeBulkCreate: async (instances, options) => {
+      console.log('beforeBulkCreate', options)
+      for (const instance of instances) {
+        const cnt = await BcTplRelModel.count({
+          where: {
+            bcId: instance.bcId
+          }
+        })
+        instance.ordinal = cnt + 1
+        console.log(instance)
+      }
+    },
+    afterBulkDestroy: async (options) => {
+      console.log('afterBulkDestroy', options)
+    }
+  }
 })
 
 /** 模板与占位符分组关系Model */
 const TplPhGrpRelModel = sequelize.define('TplPhGrpRel', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true
-  },
-  tplId: {
-    type: DataTypes.TEXT,
-    allowNull: false
-  },
-  phGrpId: {
-    type: DataTypes.TEXT,
-    allowNull: false
-  },
-  sort: {
+  ordinal: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
+    defaultValue: 0
   },
 })
 
 /** 占位符分组与项目关系Model */
 const PhGrpItmRelModel = sequelize.define('PhGrpItmRel', {
+  ordinal: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0
+  },
+})
+
+const SettingModel = sequelize.define('Setting', {
   id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
+    type: DataTypes.STRING,
     primaryKey: true
   },
-  phGrpId: {
-    type: DataTypes.TEXT,
+  name: {
+    type: DataTypes.STRING,
     allowNull: false
   },
-  phItmId: {
-    type: DataTypes.TEXT,
+  description: {
+    type: DataTypes.STRING,
+  },
+  type: {
+    type: DataTypes.STRING,
+    defaultValue: 'BOOL',
     allowNull: false
   },
-  sort: {
-    type: DataTypes.INTEGER,
-    allowNull: false
-  },
-})
-
-BusinessCategoryModel.hasMany(TemplateModel, {
-  foreignKey: 'bcId',
-})
-
-TemplateModel.belongsTo(BusinessCategoryModel, {
-  foreignKey: 'bcId'
+  value: {
+    type: DataTypes.STRING,
+  }
 })
 
 BusinessCategoryModel.hasMany(BusinessCategoryModel, {
   as: 'children',
-  foreignKey: 'pid'
+  foreignKey: 'pid',
+  onDelete: 'CASCADE'
 })
 
-// BusinessCategoryModel.belongsTo(BusinessCategoryModel, {
-//   as: 'parent',
-//   foreignKey: 'pid'
-// })
+BusinessCategoryModel.belongsToMany(TemplateModel, {
+  through: BcTplRelModel,
+  foreignKey: 'bcId',
+})
 
-// BusinessCategoryModel.belongsToMany(BusinessCategoryModel, {
-//   as: 'parentBusinessCategories',
-//   foreignKey: {
-//     name: 'pid',
-//     allowNull: true
-//   },
-//   through: 'parent'
-// })
+TemplateModel.belongsToMany(BusinessCategoryModel, {
+  through: BcTplRelModel,
+  foreignKey: 'tplId',
+})
+
+TemplateModel.belongsToMany(PlaceholderGroupModel, {
+  through: TplPhGrpRelModel,
+  foreignKey: 'tplId',
+})
+
+PlaceholderGroupModel.belongsToMany(TemplateModel, {
+  through: TplPhGrpRelModel,
+  foreignKey: 'phGrpId',
+})
+
+PlaceholderGroupModel.belongsToMany(PlaceholderItemModel, {
+  through: PhGrpItmRelModel,
+  foreignKey: 'phGrpId',
+})
+
+PlaceholderItemModel.belongsToMany(PlaceholderGroupModel, {
+  through: PhGrpItmRelModel,
+  foreignKey: 'phItmId',
+})
 
 // const isDevelopment = process.env.NODE_ENV !== 'production'
 // isDevelopment && sequelize.sync({ alter: true });
@@ -196,9 +209,15 @@ const Models = {
   TemplateModel,
   PlaceholderItemModel,
   PlaceholderGroupModel,
-  CatTplRelModel,
+  BcTplRelModel,
   TplPhGrpRelModel,
-  PhGrpItmRelModel
+  PhGrpItmRelModel,
+  SettingModel
+}
+
+// TODO 所有service请求都要修改
+export async function beginTx(callback) {
+  return await sequelize.transaction(callback)
 }
 
 export function getModel(modelName) {
@@ -210,5 +229,6 @@ export function getModel(modelName) {
 export {
   sequelize,
   QueryTypes,
-  Op
+  Op,
+  Models
 }

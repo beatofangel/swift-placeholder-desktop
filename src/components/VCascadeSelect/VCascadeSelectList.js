@@ -94,9 +94,11 @@ export default mixins(Colorable, Themeable).extend({
             }
             if (this.items.length > this.defaultItemCount) {
               const selectedDom = this.$el.querySelector('div.v-list-item--active')
-              const target = Number(selectedDom.ariaRowIndex) * 48 + 48
-              console.log('scroll to', target)
-              this.$vuetify.goTo(target, { container: `.noScrollBar-${this.level}`, easing: 'easeInOutCubic', offset: -16 })
+              if (selectedDom) {
+                const target = Number(selectedDom.ariaRowIndex) * 48 + 48
+                console.log('scroll to', target)
+                this.$vuetify.goTo(target, { container: `.auto-hide-scrollbar-${this.level}`, easing: 'easeInOutCubic', offset: -16 })
+              }
             }
             // selectedDom && this.$nextTick(() => selectedDom.scrollIntoView()) // TODO 使用({ behavior: "smooth" }))后滚动失效
             // if (this.$el.scrollTop == 0) {
@@ -122,8 +124,7 @@ export default mixins(Colorable, Themeable).extend({
       deep: true,
       // immediate: true,
       handler() {
-        if (this.isMenuActive) {
-          console.log('list mounted')
+        // if (this.isMenuActive) {
           if (this.items.length <= this.defaultItemCount) {
             this.$emit('update:scroll-top', true)
             this.$emit('update:scroll-bottom', true)
@@ -136,7 +137,7 @@ export default mixins(Colorable, Themeable).extend({
               this.$emit('update:scroll-bottom', false)
             }
           }
-        }
+        // }
       }
     }
   },
@@ -287,7 +288,7 @@ export default mixins(Colorable, Themeable).extend({
     },
     /*eslint no-unused-vars: "off"*/
     genTileContent(item, index = -1) {
-      const innerHTML = index == -1 ? this.getText(item) : `${item.sort} - ${this.getText(item)}`
+      const innerHTML = index == -1 ? this.getText(item) : `${item.ordinal} - ${this.getText(item)}`
       // const innerHTML = this.genFilteredText(this.getText(item));
       // const children = []
       // item.children && children.push(this.$createElement(VSpacer), this.$createElement(VIcon, { domProps: 'mdi-chevron-right' }))

@@ -27,7 +27,7 @@ import {
 
 import mixins from "vuetify/lib/util/mixins";
 import { VCard, VCardText } from "vuetify/lib/components/VCard";
-import { VDivider, VIcon } from "vuetify/lib/components";
+import { VDivider, VIcon, VBtn, VRow, VCol } from "vuetify/lib/components";
 import goTo from "vuetify/lib/services/goto";
 // import { VIcon, VList, VListItem, VListItemGroup, VListItemTitle, VListItemAction, VListItemContent } from "vuetify/lib/components";
 // import { isNumber } from "lodash"
@@ -36,18 +36,18 @@ export const defaultMenuProps = {
   closeOnContentClick: false,
   disableKeys: true,
   openOnClick: false,
-  maxHeight: 296,//304,
+  maxHeight: 296, //304,
 }; // Types
 
 const baseMixins = mixins(VTextField, Comparable, Dependent, Filterable);
 /* @vue/component */
-const defaultItemCount = 5
+const defaultItemCount = 5;
 
 export default baseMixins.extend().extend({
   name: "v-cascade-select",
   directives: {
     ClickOutside,
-    Scroll
+    Scroll,
   },
   props: {
     appendIcon: {
@@ -104,9 +104,8 @@ export default baseMixins.extend().extend({
       // As long as a value is defined, show it
       // Otherwise, check if multiple
       // to determine which default to provide
-      lazyValue:
-        this.value !== undefined ? this.value : undefined,
-        // this.value !== undefined ? this.value : this.multiple ? [] : undefined,
+      lazyValue: this.value !== undefined ? this.value : undefined,
+      // this.value !== undefined ? this.value : this.multiple ? [] : undefined,
       // selectedIndex: -1,
       // selectedItems: [],
       selectedLevel1Items: [],
@@ -123,7 +122,7 @@ export default baseMixins.extend().extend({
       level1ScrollBottom: true,
       level2ScrollBottom: true,
       level3ScrollBottom: true,
-      colors: [ 'primary', 'light-green', 'orange' ]
+      colors: ["primary", "light-green", "orange"],
     };
   },
 
@@ -227,7 +226,7 @@ export default baseMixins.extend().extend({
     level2Items() {
       return Array.isArray(this.levelSelectedArray[0]) &&
         this.levelSelectedArray[0].length > 0
-        ? (this.level1Items && this.level1Items.length > 0)
+        ? this.level1Items && this.level1Items.length > 0
           ? this.level1Items[this.levelSelectedArray[0]].children
           : []
         : [];
@@ -235,7 +234,7 @@ export default baseMixins.extend().extend({
     level3Items() {
       return Array.isArray(this.levelSelectedArray[1]) &&
         this.levelSelectedArray[1].length > 0
-        ? (this.level2Items && this.level2Items.length > 0)
+        ? this.level2Items && this.level2Items.length > 0
           ? this.level2Items[this.levelSelectedArray[1]].children
           : []
         : [];
@@ -254,36 +253,39 @@ export default baseMixins.extend().extend({
       ];
     },
     levelScrollTop() {
-      return [this.level1ScrollTop, this.level2ScrollTop, this.level3ScrollTop]
+      return [this.level1ScrollTop, this.level2ScrollTop, this.level3ScrollTop];
     },
     levelScrollBottom() {
-      return [this.level1ScrollBottom, this.level2ScrollBottom, this.level3ScrollBottom]
-    }
+      return [
+        this.level1ScrollBottom,
+        this.level2ScrollBottom,
+        this.level3ScrollBottom,
+      ];
+    },
   },
   watch: {
     level1ScrollTop(val) {
-      console.log('level1ScrollTop', val)
+      console.log("level1ScrollTop", val);
     },
     level2ScrollTop(val) {
-      console.log('level2ScrollTop', val)
+      console.log("level2ScrollTop", val);
     },
     level3ScrollTop(val) {
-      console.log('level3ScrollTop', val)
+      console.log("level3ScrollTop", val);
     },
     level1ScrollBottom(val) {
-      console.log('level1ScrollBottom', val)
+      console.log("level1ScrollBottom", val);
     },
     level2ScrollBottom(val) {
-      console.log('level2ScrollBottom', val)
+      console.log("level2ScrollBottom", val);
     },
     level3ScrollBottom(val) {
-      console.log('level3ScrollBottom', val)
+      console.log("level3ScrollBottom", val);
     },
     internalValue(val, oVal) {
-      console.log('internalValue changed', val, oVal)
+      console.log("internalValue changed", val, oVal);
       this.initialValue = val;
       // this.setSelectedItems();
-
     },
 
     items: {
@@ -302,48 +304,52 @@ export default baseMixins.extend().extend({
           });
         }
 
-        this.initSelectedItems(this.items, 0);
+        val && val.length > 0 && this.initSelectedItems(this.items, 0);
       },
     },
   },
   methods: {
     listScroll(container, up) {
-      const current = document.querySelector(container).scrollTop
-      const target = current + 48 + (up ? -48 * 3 : 48 * 3)
-      goTo(target, { container: container, easing: 'easeInOutCubic', offset: -16 })
+      const current = document.querySelector(container).scrollTop;
+      const target = current + 48 + (up ? -48 * 3 : 48 * 3);
+      goTo(target, {
+        container: container,
+        easing: "easeInOutCubic",
+        offset: -16,
+      });
     },
     listScrollUp(container) {
-      this.listScroll(container, true)
+      this.listScroll(container, true);
     },
     listScrollDown(container) {
-      this.listScroll(container, false)
+      this.listScroll(container, false);
     },
     // 计算属性必须要直接更新对应的data值才能确保刷新
     updateScrollTop(level, top) {
       switch (level) {
         case 0:
-          this.level1ScrollTop = top
-          break
+          this.level1ScrollTop = top;
+          break;
         case 1:
-          this.level2ScrollTop = top
-          break
+          this.level2ScrollTop = top;
+          break;
         case 2:
-          this.level3ScrollTop = top
-          break
+          this.level3ScrollTop = top;
+          break;
       }
     },
     // 计算属性必须要直接更新对应的data值才能确保刷新
     updateScrollBottom(level, bottom) {
       switch (level) {
         case 0:
-          this.level1ScrollBottom = bottom
-          break
+          this.level1ScrollBottom = bottom;
+          break;
         case 1:
-          this.level2ScrollBottom = bottom
-          break
+          this.level2ScrollBottom = bottom;
+          break;
         case 2:
-          this.level3ScrollBottom = bottom
-          break
+          this.level3ScrollBottom = bottom;
+          break;
       }
     },
     initSelectedItems(obj, level) {
@@ -356,7 +362,11 @@ export default baseMixins.extend().extend({
               return true;
             } else {
               if (obj[i].children) {
-                pathFinder(obj[i].children, level + 1);
+                if (pathFinder(obj[i].children, level + 1)) {
+                  return true;
+                } else {
+                  path.pop();
+                }
               } else {
                 path.pop();
               }
@@ -371,7 +381,7 @@ export default baseMixins.extend().extend({
       path.forEach((val, idx) => {
         this.levelSelectedArray[idx].splice(0);
         this.levelSelectedArray[idx].push(val);
-        
+
         this.selectedLevelItems[idx].splice(0);
         this.selectedLevelItems[idx].push(this.levelItemsArray[idx][val]);
       });
@@ -394,11 +404,11 @@ export default baseMixins.extend().extend({
     },
 
     clearableCallback() {
-      this.levelSelectedArray.forEach(item=>{
-        item.splice(0)
-      })
+      this.levelSelectedArray.forEach((item) => {
+        item.splice(0);
+      });
       this.setValue2(null);
-      this.$nextTick(() => this.$refs.input && this.$refs.input.focus())
+      this.$nextTick(() => this.$refs.input && this.$refs.input.focus());
       if (this.openOnClear) this.isMenuActive = true;
     },
 
@@ -604,20 +614,20 @@ export default baseMixins.extend().extend({
           selectedItems: this.selectedLevelItems[level],
           isMenuActive: this.isMenuActive,
           maxHeight: defaultMenuProps.maxHeight,
-          defaultItemCount: defaultItemCount
+          defaultItemCount: defaultItemCount,
           // selectedItems: this.selectedItems,
         },
         class: {
-          "py-0": true
+          "py-0": true,
         },
         on: {
           select: this.selectItem2,
           "update:scroll-top": (top) => {
-            this.updateScrollTop(level, top)
+            this.updateScrollTop(level, top);
           },
           "update:scroll-bottom": (bottom) => {
-            this.updateScrollBottom(level, bottom)
-          }
+            this.updateScrollBottom(level, bottom);
+          },
         },
         scopedSlots: {
           item: this.$scopedSlots.item,
@@ -629,10 +639,13 @@ export default baseMixins.extend().extend({
       const depth = this.getDepth(this.items, 0);
       const list = [];
       for (let i = 0; i < depth; i++) {
-        const level = i
-        const data = this.listData2(level)
-        if (i > 0) {
-          list.push(this.$createElement(VDivider, { props: { vertical: true } }))
+        const level = i;
+        const data = this.listData2(level);
+        if (level > 0) {
+          // if (this.levelSelectedArray[level].length == 0) break;
+          list.push(
+            this.$createElement(VDivider, { props: { vertical: true } })
+          );
         }
         list.push(
           this.$createElement(
@@ -652,34 +665,186 @@ export default baseMixins.extend().extend({
               },
               style: {
                 display: "flex",
-                "flex-direction": "column"
+                "flex-direction": "column",
               },
             },
             [
-              this.$createElement("div", { class: { scrollPanel: true, disabled: this.levelScrollTop[level] }, style: { "text-align": "center", cursor: this.levelScrollTop[level] ? "auto" : "pointer", height: "24px" }, on: { click: () => this.listScrollUp(`.noScrollBar-${level}`) } }, [this.$createElement(VIcon, { class: { noBgColorIcon: true }, props: { disabled: this.levelScrollTop[level]/*, color: this.colors[level]*/ } }, this.levelScrollTop[level] ? "mdi-blank" : "mdi-chevron-up")]),
+              this.$createElement(
+                VRow,
+                { style: { maxHeight: "24px" }, class: { "ma-0": true } },
+                [
+                  this.$createElement(
+                    VCol,
+                    {
+                      class: {
+                        "pa-0": true,
+                        "col-4": true,
+                        "d-flex": true,
+                        "justify-start": true,
+                      },
+                    },
+                    []
+                  ),
+                  this.$createElement(
+                    VCol,
+                    {
+                      class: {
+                        "pa-0": true,
+                        "col-4": true,
+                        "d-flex": true,
+                        "justify-center": true,
+                      },
+                    },
+                    [
+                      this.$createElement(
+                        VBtn,
+                        {
+                          style: { maxHeight: "24px" },
+                          props: {
+                            small: true,
+                            text: true,
+                            width: "40px",
+                            disabled: this.levelScrollTop[level],
+                          },
+                          on: {
+                            click: () =>
+                              this.listScrollUp(
+                                `.auto-hide-scrollbar-${level}`
+                              ),
+                          },
+                        },
+                        [
+                          this.$createElement(
+                            VIcon,
+                            { class: { noBgColorIcon: true } },
+                            this.levelScrollTop[level]
+                              ? "mdi-blank"
+                              : "mdi-chevron-up"
+                          ),
+                        ]
+                      ),
+                    ]
+                  ),
+                  this.$createElement(
+                    VCol,
+                    {
+                      class: {
+                        "pa-0": true,
+                        "col-4": true,
+                        "d-flex": true,
+                        "justify-end": true,
+                      },
+                    },
+                    []
+                  ),
+                ]
+              ),
               this.$createElement(
                 VCardText,
                 {
                   style: { "flex-grow": 1 },
-                  class: { "pa-0": true, "noScrollBar": true, [`noScrollBar-${level}`]: true, "overflow-y-auto": true },
-                  directives: [{
-                    name: "scroll",
-                    modifiers: { self: true },
-                    value: (e) => {
-                      if (e.target.scrollTop == 0) {
-                        this.updateScrollTop(level, true)
-                      } else if (e.target.scrollTop == (e.target.children[0].clientHeight - e.target.clientHeight)) {
-                        this.updateScrollBottom(level, true)
-                      } else {
-                        this.updateScrollTop(level, false)
-                        this.updateScrollBottom(level, false)
-                      }
-                    }
-                  }]
+                  class: {
+                    "pa-0": true,
+                    // 上下任意一边可以滚动时
+                    "auto-hide-scrollbar": !(
+                      this.levelScrollTop[level] &&
+                      this.levelScrollBottom[level]
+                    ),
+                    [`auto-hide-scrollbar-${level}`]: true,
+                    "overflow-y-auto": true,
+                  },
+                  directives: [
+                    {
+                      name: "scroll",
+                      modifiers: { self: true },
+                      value: (e) => {
+                        if (e.target.scrollTop == 0) {
+                          this.updateScrollTop(level, true);
+                        } else if (
+                          e.target.scrollTop ==
+                          e.target.children[0].clientHeight -
+                            e.target.clientHeight
+                        ) {
+                          this.updateScrollBottom(level, true);
+                        } else {
+                          this.updateScrollTop(level, false);
+                          this.updateScrollBottom(level, false);
+                        }
+                      },
+                    },
+                  ],
                 },
                 [this.$createElement(VCascadeSelectList, { ...data })]
               ),
-              this.$createElement("div", { class: { scrollPanel: true, disabled: this.levelScrollBottom[level] }, style: { "text-align": "center", cursor: this.levelScrollBottom[level] ? "auto" : "pointer", height: "24px" }, on: { click: () => this.listScrollDown(`.noScrollBar-${level}`) } }, [this.$createElement(VIcon, { class: { noBgColorIcon: true }, props: { disabled: this.levelScrollBottom[level]/*, color: this.colors[level]*/ } }, this.levelScrollBottom[level] ? "mdi-blank" : "mdi-chevron-down")]),
+              this.$createElement(
+                VRow,
+                { style: { maxHeight: "24px" }, class: { "ma-0": true } },
+                [
+                  this.$createElement(
+                    VCol,
+                    {
+                      class: {
+                        "pa-0": true,
+                        "col-4": true,
+                        "d-flex": true,
+                        "justify-start": true,
+                      },
+                    },
+                    []
+                  ),
+                  this.$createElement(
+                    VCol,
+                    {
+                      class: {
+                        "pa-0": true,
+                        "col-4": true,
+                        "d-flex": true,
+                        "justify-center": true,
+                      },
+                    },
+                    [
+                      this.$createElement(
+                        VBtn,
+                        {
+                          style: { maxHeight: "24px" },
+                          props: {
+                            small: true,
+                            text: true,
+                            disabled: this.levelScrollBottom[level],
+                          },
+                          on: {
+                            click: () =>
+                              this.listScrollDown(
+                                `.auto-hide-scrollbar-${level}`
+                              ),
+                          },
+                        },
+                        [
+                          this.$createElement(
+                            VIcon,
+                            { class: { noBgColorIcon: true } },
+                            this.levelScrollBottom[level]
+                              ? "mdi-blank"
+                              : "mdi-chevron-down"
+                          ),
+                        ]
+                      ),
+                    ]
+                  ),
+                  this.$createElement(
+                    VCol,
+                    {
+                      class: {
+                        "pa-0": true,
+                        "col-4": true,
+                        "d-flex": true,
+                        "justify-end": true,
+                      },
+                    },
+                    []
+                  ),
+                ]
+              ),
             ]
           )
         );
@@ -690,7 +855,15 @@ export default baseMixins.extend().extend({
         [
           this.$createElement(
             VCardText,
-            { class: { "d-flex": true, "flex-nowrap": true, "py-0": true, "pl-0": true, "pr-5": true } },
+            {
+              class: {
+                "d-flex": true,
+                "flex-nowrap": true,
+                "py-0": true,
+                "pl-0": true,
+                "pr-5": true,
+              },
+            },
             list
           ),
         ]
@@ -741,19 +914,31 @@ export default baseMixins.extend().extend({
           Array.isArray(this.levelSelectedArray[i]) &&
           this.levelSelectedArray[i].length > 0
         ) {
-          i && children.push(
-            this.$createElement(VIcon, {
-              class: { mdi: true, "mdi-chevron-right": true },
-            })
-          );
+          i &&
+            children.push(
+              this.$createElement(VIcon, {
+                class: { mdi: true, "mdi-chevron-right": true },
+              })
+            );
           const item = this.levelItemsArray[i][this.levelSelectedArray[i][0]];
           children.push(
             this.$createElement(
               VChip,
-              { props: { label: true, outlined: false, color: `${this.colors[i]} lighten-1`, dark: true } },
+              {
+                props: {
+                  label: true,
+                  outlined: false,
+                  color: `${this.colors[i]} lighten-1`,
+                  dark: true,
+                },
+              },
               [
-                this.$createElement(VIcon, { props: { left: true } }, item.icon),
-                `${item.sort} - ${this.getText(item)}`,
+                this.$createElement(
+                  VIcon,
+                  { props: { left: true } },
+                  item.icon
+                ),
+                `${item.ordinal} - ${this.getText(item)}`,
               ]
             )
           );
@@ -931,7 +1116,7 @@ export default baseMixins.extend().extend({
       // menu-index should toggled
 
       if (activeTile && this.isMenuActive) {
-      // if (!this.multiple && activeTile && this.isMenuActive) {
+        // if (!this.multiple && activeTile && this.isMenuActive) {
         e.preventDefault();
         e.stopPropagation();
         activeTile.click();
@@ -976,7 +1161,7 @@ export default baseMixins.extend().extend({
             menu.lastTile();
             break;
         }
-        console.log(menu.activeTile)
+        console.log(menu.activeTile);
         // menu.activeTile.scrollIntoView()
 
         this.selectItem(this.allItems[this.getMenuIndex()]);
@@ -1001,12 +1186,12 @@ export default baseMixins.extend().extend({
         // if (this.hideSelected) {
         //   this.setMenuIndex(-1);
         // } else {
-          const index = this.allItems.indexOf(item);
+        const index = this.allItems.indexOf(item);
 
-          if (~index) {
-            this.$nextTick(() => this.$refs.menu.getTiles());
-            setTimeout(() => this.setMenuIndex(index));
-          }
+        if (~index) {
+          this.$nextTick(() => this.$refs.menu.getTiles());
+          setTimeout(() => this.setMenuIndex(index));
+        }
         // }
       }
     },
@@ -1026,7 +1211,7 @@ export default baseMixins.extend().extend({
             // this.levelItemsArray[level + 1].splice(0)
             this.levelSelectedArray[level].splice(0);
           }
-          for ( let i = level + 1; i < 3; i++) {
+          for (let i = level + 1; i < 3; i++) {
             this.levelSelectedArray[i].splice(0);
           }
         });
@@ -1040,10 +1225,9 @@ export default baseMixins.extend().extend({
 
     setSelectedItems2(level) {
       const selectedItems = [];
-      const values =
-        !Array.isArray(this.internalValue)
-          ? [this.internalValue]
-          : this.internalValue;
+      const values = !Array.isArray(this.internalValue)
+        ? [this.internalValue]
+        : this.internalValue;
 
       for (const value of values) {
         const index = this.allItems.findIndex((v) =>
@@ -1055,17 +1239,13 @@ export default baseMixins.extend().extend({
         }
       }
 
-      console.log('setSelectedItems2(before)', this.selectedLevelItems[level])
+      console.log("setSelectedItems2(before)", this.selectedLevelItems[level]);
       this.selectedLevelItems[level] = selectedItems;
-      console.log('setSelectedItems2(after) ', this.selectedLevelItems[level])
+      console.log("setSelectedItems2(after) ", this.selectedLevelItems[level]);
     },
 
     setValue(value) {
-      console.log(
-        "setValue:",
-        "internalValue",
-        value
-      );
+      console.log("setValue:", "internalValue", value);
       if (!this.valueComparator(value, this.internalValue)) {
         this.internalValue = value;
         this.$emit("change", value);
@@ -1073,38 +1253,44 @@ export default baseMixins.extend().extend({
     },
 
     setValue2(value, level) {
-      console.log(
-        "setValue2:",
-        "internalValue",
-        value, level
-      );
-      
+      console.log("setValue2:", "internalValue", value, level);
+
       if (level == null) {
         // 仅当清空按钮触发时
-        this.internalValue = value
+        this.internalValue = value;
       } else {
         // 若 当前层级已选中
         if (this.levelSelectedArray[level].length > 0) {
           // 若 点击选项是当前层级已选中项
-          if (this.valueComparator(value, this.levelItemsArray[level][this.levelSelectedArray[level][0]][this.itemValue])) {
+          if (
+            this.valueComparator(
+              value,
+              this.levelItemsArray[level][this.levelSelectedArray[level][0]][
+                this.itemValue
+              ]
+            )
+          ) {
             // 若 当前层级非顶层
             if (level > 0) {
               // 则 切换到上层选中项
-              this.internalValue = this.levelItemsArray[level - 1][this.levelSelectedArray[level - 1][0]][this.itemValue]
+              this.internalValue =
+                this.levelItemsArray[level - 1][
+                  this.levelSelectedArray[level - 1][0]
+                ][this.itemValue];
             } else {
               // 否则 清空选中项
-              this.internalValue = null
+              this.internalValue = null;
             }
           } else {
             // 否则 选中当前选项
-            this.internalValue = value
+            this.internalValue = value;
           }
         } else {
           // 否则 选中当前选项
-          this.internalValue = value
+          this.internalValue = value;
         }
       }
-      
+
       this.setSelectedItems2(level);
       this.$emit("change", value);
     },

@@ -8,6 +8,7 @@ const channels = {
     'notification',
     'openFile',
     'saveFile',
+    'deleteFile',
     'previewPdf',
     'getAppVersion',
   ],
@@ -42,4 +43,6 @@ contextBridge.exposeInMainWorld('ipc', {
 })
 
 contextBridge.exposeInMainWorld('replaceService', { ...require('./service/replaceService') })
+contextBridge.exposeInMainWorld('settingService', { ...require('./service/settingService') })
 contextBridge.exposeInMainWorld('commonService', { ...require('./service/commonService') })
+contextBridge.exposeInMainWorld('store', { ...require('./store') })

@@ -30,118 +30,14 @@
                         clearable
                         open-on-clear
                         outlined
-                      ></v-cascade-select>
+                      >
+                        <template v-slot:append-outer>
+                          <v-hover v-slot="{ hover }" v-if="isAdminMode">
+                            <v-icon @click="showBusinessCategoryListDialog" :class="{ 'rotate-transition-120': hover }">mdi-cog</v-icon>
+                          </v-hover>
+                        </template>
+                      </v-cascade-select>
                     </validation-provider>
-                  </v-col>
-                </v-row>
-                <v-row>
-                  <v-col>
-                    <v-row>
-                      <v-col v-for="level in visibleCategoryLevels" :key="level" :cols="12 / visibleCategoryLevels">
-                        <validation-provider
-                          :name="getCategoryName(level)"
-                          :rules="rules.businessCategory"
-                          v-slot="{ errors, invalid }"
-                        >
-                          <v-select
-                            v-model="formData.categories2[level-1]"
-                            :items="categoryOptions2[level-1]"
-                            :menu-props="{
-                              bottom: true,
-                              offsetY: true,
-                              closeOnContentClick: true,
-                            }"
-                            item-text="name"
-                            item-value="id"
-                            :label="getCategoryName(level)"
-                            :error-messages="errors[0]"
-                            :placeholder="`请选择${getCategoryName(level)}`"
-                            persistent-placeholder
-                            clearable
-                            outlined
-                            @change="onChangeCategory(level)"
-                            @click:clear="onClearCategory(level)"
-                          >
-                            <template v-slot:no-data>
-                              <v-list-item>
-                                <v-list-item-action>
-                                </v-list-item-action>
-                                <v-list-item-content class="text--disabled">
-                                  没有数据
-                                </v-list-item-content>
-                              </v-list-item>
-                            </template>
-                            <template v-slot:append-outer>
-                              <v-tooltip v-if="visibleCategoryLevels == level && level < categoryLevels" top>
-                                <template v-slot:activator="{ on, attrs }">
-                                  <v-icon color="success" :disabled="invalid" @click="appendSubLevel(level)" v-bind="attrs" v-on="on">
-                                    mdi-plus
-                                  </v-icon>
-                                </template>
-                                <span v-text="`添加${getCategoryName(level)}`"></span>
-                              </v-tooltip>
-                              <v-tooltip v-if="level > 1 && (!categoryOptions2[level-1] || categoryOptions2[level-1].length == 0)" top>
-                                <template v-slot:activator="{ on, attrs }">
-                                  <v-icon color="error" @click="removeSubLevel(level-1)" v-bind="attrs" v-on="on">
-                                    mdi-minus
-                                  </v-icon>
-                                </template>
-                                <span v-text="`删除${getCategoryName(level)}`"></span>
-                              </v-tooltip>
-                            </template>
-                            <template v-slot:selection="{ item }">
-                              <v-icon v-if="item.icon" color="primary">{{
-                                item.icon
-                              }}</v-icon>
-                              <span class="ml-8">{{
-                                `${item.sort} - ${item.name}`
-                              }}</span>
-                            </template>
-                            <template v-slot:item="{ item, on, attrs }">
-                              <v-list-item class="px-0" v-on="on" v-bind="attrs">
-                                <v-hover v-slot="{ hover }">
-                                  <v-list-item :ripple="false">
-                                    <v-list-item-action>
-                                      <v-icon
-                                        v-if="item.icon"
-                                        :color="hover ? 'primary' : 'accent'"
-                                        >{{ item.icon }}</v-icon
-                                      >
-                                    </v-list-item-action>
-                                    <v-list-item-content>
-                                      {{ `${item.sort} - ${item.name}` }}
-                                    </v-list-item-content>
-                                  </v-list-item>
-                                </v-hover>
-                              </v-list-item>
-                            </template>
-                            <template v-slot:append-item>
-                              <v-divider class="mt-2"></v-divider>
-                              <v-list-item
-                                class="px-0"
-                                @mousedown.prevent
-                                @click="showCategoryDialog(level)"
-                              >
-                                <v-hover v-slot="{ hover }">
-                                  <v-list-item :ripple="false">
-                                    <v-list-item-action>
-                                      <v-icon
-                                        :class="{ 'rotate-transition-120': hover }"
-                                        color="primary"
-                                        >mdi-cog</v-icon
-                                      >
-                                    </v-list-item-action>
-                                    <v-list-item-content>
-                                      管理业务类型
-                                    </v-list-item-content>
-                                  </v-list-item>
-                                </v-hover>
-                              </v-list-item>
-                            </template>
-                          </v-select>
-                        </validation-provider>
-                      </v-col>
-                    </v-row>
                   </v-col>
                 </v-row>
                 <v-row>
@@ -171,26 +67,32 @@
                   <v-col>
                     <v-card>
                       <v-toolbar
-                        color="cyan"
+                        :color="$vuetify.theme.dark ? 'grey darken-4' : 'primary'"
                         dark
                       >
+                        <!-- <v-icon color="grey lighten-2">mdi-file-document-multiple-outline</v-icon> -->
                         <v-tabs
                           v-model="tab"
+                          ref="templateTabs"
                           align-with-title
                         >
-                          <v-tabs-slider></v-tabs-slider>
+                          <v-tabs-slider :key="formData.templates[tab] == null ? 'not_found' : formData.templates[tab].id"></v-tabs-slider>
                           <v-tab
                             v-for="{ id, name } in formData.templates"
                             :key="id"
                           >
                             <span class="text-h6">{{ name }}</span>
                           </v-tab>
-                          <v-btn @click="showTemplateDialog" v-if="formData.businessCategory && formData.templates.length == 0" height="100%" color="cyan" depressed tile>
-                            <v-icon>mdi-plus</v-icon><span class="text-h6">添加模板</span>
-                          </v-btn>
-                          <v-btn @click="showTemplateListDialog" v-if="formData.businessCategory && formData.templates.length > 0" height="100%" color="cyan" depressed tile>
-                            <v-icon>mdi-cog</v-icon>
-                          </v-btn>
+                          <v-hover v-slot="{ hover }" v-if="formData.businessCategory && formData.templates.length == 0">
+                            <v-btn @click="showTemplateDialog" height="100%" color="transparent" depressed tile>
+                              <v-icon :class="{ 'rotate-transition-180': hover }">mdi-plus</v-icon><span class="text-h6">添加模板</span>
+                            </v-btn>
+                          </v-hover>
+                          <v-hover v-slot="{ hover }" v-if="formData.businessCategory && formData.templates.length > 0">
+                            <v-btn @click="showTemplateListDialog" height="100%" color="transparent" depressed tile>
+                              <v-icon :class="{ 'rotate-transition-120': hover }">mdi-cog</v-icon>
+                            </v-btn>
+                          </v-hover>
                           <v-banner v-if="!formData.businessCategory">
                             <v-icon class="mt-n1 mr-1" color="warning">mdi-alert</v-icon>
                             <span class="text-h6">未选择业务类型</span>
@@ -230,39 +132,25 @@
         </validation-observer>
       </v-col>
     </v-row>
-    <v-dialog width="600" v-model="dialog.showCategoryList">
-      <!-- 需要传入condition，且type要根据currentCategoryDialog来设定 -->
-      <common-list
-        :condition="currentCategoryDialogCondition"
-        model="BusinessCategory" 
-        :title="currentCategoryDialogTitle"
-        :headers="categoryHeaders"
-        :item-names="['name', 'icon', 'sort']"
-        :visible="dialog.showCategoryList"
-        show-select
-        :selected-id="formData.categories[currentCategoryDialog]"
-        @select="selected=>{this.formData.categories[currentCategoryDialog]=selected;this.dialog.showCategoryList = false}"
-        @close="dialog.showCategoryList = false"
+    <v-dialog width="calc(100vw)" v-model="dialog.showBusinessCategoryList">
+      <business-category-list
+        :businessCategories="selectedBusinessCategories"
+        :visible="dialog.showBusinessCategoryList"
+        @close="dialog.showBusinessCategoryList = false"
         @change="updateCategoryOptions"
-      >
-        <template v-slot:[`item.icon`]="{ item }">
-          <v-icon color="accent">{{item ? item.icon : 'item 未定义'}}</v-icon>
-        </template>
-        <template v-slot="{ id, name, icon, sort, isEdit, visible, title, cancel, save }">
-          <business-category-detail :id="id" :pid="currentCategoryDialogPid" :name="name" :icon="icon" :sort="sort" :isEdit="isEdit" :visible="visible" :title="title" @cancel="cancel" @save="save"></business-category-detail>
-        </template>
-      </common-list>
+      ></business-category-list>
     </v-dialog>
     <v-dialog width="600" v-model="dialog.showTemplateList">
       <common-list
-        :condition="{ businessCategoryId: formData.businessCategory }"
+        :condition="{ bcId: formData.businessCategory }"
         model="Template"
         title="模板"
         :headers="templateHeaders"
         :item-names="['name', 'path']"
         :visible="dialog.showTemplateList"
         @close="dialog.showTemplateList = false"
-        :pre-interceptor="{ save: saveTemplateFile, delete: deleteTemplateFile }"
+        @change="onBusinessCategoryChange"
+        :interceptor="{ save: saveTemplateFile, delete: deleteTemplateFile }"
       >
         <template v-slot:[`item.path`]="{ item }">
           <v-icon @click="openTemplate(item.path)">mdi-open-in-new</v-icon>
@@ -280,34 +168,38 @@
 
 <script>
 import CommonList from "@/components/Common/CommonList.vue";
-import BusinessCategoryDetail from '@/components/BusinessCategory/BusinessCategoryDetail.vue';
+// import BusinessCategoryDetail from '@/components/BusinessCategory/BusinessCategoryDetail.vue';
 import TemplateDetail from '@/components/Template/TemplateDetail.vue';
 import moment from "moment";
 import ReplacementEdit from '../components/Replacement/ReplacementEdit.vue';
-import { v4 as uuidv4 } from "uuid";
+// import { v4 as uuidv4 } from "uuid";
 import _ from 'lodash';
 import VCascadeSelect from '../components/VCascadeSelect'
+import BusinessCategoryList from '@/components/BusinessCategory/BusinessCategoryList.vue'
 
 export default {
   components: {
     CommonList,
-    BusinessCategoryDetail,
+    // BusinessCategoryDetail,
     TemplateDetail,
     ReplacementEdit,
-    VCascadeSelect
+    VCascadeSelect,
+    BusinessCategoryList
   },
   mounted() {
-    window.replaceService.findBusinessCategoryCascaded().then(data => {
-      console.log(data)
-      this.businessCategoryOptions = data
-    })
-    window.commonService.find('BusinessCategory', { pid: '319f8bd1-0210-4a45-83d5-c6cdd01af2a5' }).then(data => {
-      console.log('BusinessCategory', data)
-      this.categoryOptions.primary = data
-      this.categoryOptions2.push(data)
-      console.log(this.categoryOptions2)
-      console.log(this.formData.categories2)
-    })
+    this.unsubscribe = window.store.onDidChange('settings.adminMode', this.switchAdminMode)
+    this.switchAdminMode('settings.adminMode', window.store.get('settings.adminMode'))
+    this.updateCategoryOptions()
+    // window.commonService.find('BusinessCategory', { pid: '319f8bd1-0210-4a45-83d5-c6cdd01af2a5' }).then(data => {
+    //   console.log('BusinessCategory', data)
+    //   this.categoryOptions.primary = data
+    //   this.categoryOptions2.push(data)
+    //   console.log(this.categoryOptions2)
+    //   console.log(this.formData.categories2)
+    // })
+  },
+  beforeDestroy() {
+    this.unsubscribe && this.unsubscribe()
   },
   watch: {
     // tab(val) {
@@ -331,14 +223,17 @@ export default {
         }
         window.commonService.find('BusinessCategory', params).then(data => {
           this.categoryOptions[this.currentCategoryDialog] = data
+        }).catch(err => {
+          console.log(err)
+          this.$toast.error(`业务分类加载失败！`)
         })
       }
     },
-    "dialog.showTemplateList"(val) {
-      if (!val) {
-        this.onBusinessCategoryChange();
-      }
-    },
+    // "dialog.showTemplateList"(val) {
+    //   if (!val) {
+    //     this.onBusinessCategoryChange();
+    //   }
+    // },
     "formData.businessCategory"(val) {
       console.log("业务分类(watch)：", val);
       // // this.formData.editTemplate = null;
@@ -349,7 +244,11 @@ export default {
       // this.formData.templates = [];
       // this.templatePreview = null;
       // this.$refs.observer.reset();
-      // val && this.onBusinessCategoryChange();
+      if (val) {
+        this.onBusinessCategoryChange()
+      } else {
+        this.formData.templates.splice(0)
+      }
     },
     // "formData.categories2": {
     //   deep: true,
@@ -374,30 +273,65 @@ export default {
     //     }
     //   }
     // },
-    /** 当前类型修改时，判断关联的下一级类型是否有可选项。若有，则显示下一级类型；否则隐藏下一级类型 */
-    "formData.categories.primary"(val) {
-      console.log('primary:', val)
-      this.formData.categories.secondary = null
-      val ? window.commonService.find('BusinessCategory', { pid: val }).then(data => {
-        this.secondaryCategoryDisplayFlag = data.length > 0
-        this.categoryOptions.secondary = data
-      }) : (this.secondaryCategoryDisplayFlag = false)
-      // 一级类型相关联的模板
-    },
-    /** 当前类型修改时，判断关联的下一级类型是否有可选项。若有，则显示下一级类型；否则隐藏下一级类型 */
-    "formData.categories.secondary"(val) {
-      console.log('secondary:', val)
-      this.formData.categories.tertiary = null
-      val ? window.commonService.find('BusinessCategory', { pid: val }).then(data => {
-        this.tertiaryCategoryDisplayFlag = data.length > 0
-        this.categoryOptions.tertiary = data
-      }) : (this.tertiaryCategoryDisplayFlag = false)
-    },
-    "formData.categories.tertiary"(val) {
-      console.log('tertiary:', val)
-    }
+    // /** 当前类型修改时，判断关联的下一级类型是否有可选项。若有，则显示下一级类型；否则隐藏下一级类型 */
+    // "formData.categories.primary"(val) {
+    //   console.log('primary:', val)
+    //   this.formData.categories.secondary = null
+    //   val ? window.commonService.find('BusinessCategory', { pid: val }).then(({ success, data, error }) => {
+    //     if (success) {
+    //       this.secondaryCategoryDisplayFlag = data.length > 0
+    //       this.categoryOptions.secondary = data
+    //     } else {
+    //       console.log(error)
+    //     }
+    //   }) : (this.secondaryCategoryDisplayFlag = false)
+    //   // 一级类型相关联的模板
+    // },
+    // /** 当前类型修改时，判断关联的下一级类型是否有可选项。若有，则显示下一级类型；否则隐藏下一级类型 */
+    // "formData.categories.secondary"(val) {
+    //   console.log('secondary:', val)
+    //   this.formData.categories.tertiary = null
+    //   val ? window.commonService.find('BusinessCategory', { pid: val }).then(({ success, data, error }) => {
+    //     if
+    //     this.tertiaryCategoryDisplayFlag = data.length > 0
+    //     this.categoryOptions.tertiary = data
+    //   }) : (this.tertiaryCategoryDisplayFlag = false)
+    // },
+    // "formData.categories.tertiary"(val) {
+    //   console.log('tertiary:', val)
+    // }
   },
   computed: {
+    isAdminMode() {
+      return this.adminMode == 1
+    },
+    selectedBusinessCategories() {
+      const path = [];
+      const pathFinder = (obj, level) => {
+        if (obj && Array.isArray(obj)) {
+          for (let i = 0; i < obj.length; i++) {
+            path.push(i);
+            if (obj[i].value == this.formData.businessCategory) {
+              return true;
+            } else {
+              if (obj[i].children) {
+                if (pathFinder(obj[i].children, level + 1)) {
+                  return true;
+                } else {
+                  path.pop();
+                }
+              } else {
+                path.pop();
+              }
+            }
+          }
+        }
+        return false;
+      };
+
+      this.value && pathFinder(this.businessCategoryOptions, 0);
+      return path
+    },
     // currentBusinessCategory() {
     //   return this.primaryCategoryOptions.find(
     //     (e) => e.value == this.formData.businessCategory
@@ -471,82 +405,79 @@ export default {
     }
   },
   methods: {
+    switchAdminMode(key, val) {
+      this.$set(this, 'adminMode', val.value)
+    },
     getCategoryName(level) {
-      return `${['一','二','三','四'][level - 1]}级业务类型`
+      return `${['一','二','三'][level - 1]}级业务类型`
     },
-    onChangeCategory(level) {
-      const index = level - 1
-      if (this.formData.categories2[index]) {
-        window.commonService.find('BusinessCategory', { pid: this.formData.categories2[index] }).then(data => {
-          this.$set(this.categoryVisibleArray, index + 1, data.length > 0)
-          this.categoryOptions2[index + 1] = data
-        })
-      }
-    },
-    onClearCategory(level) {
-      const index = level - 1
-      this.$set(this.categoryVisibleArray, index + 1, false)
-    },
-    appendSubLevel(level) {
-      const index = level - 1
-      this.$set(this.categoryVisibleArray, index + 1, true)
-      // this.categoryVisibleArray[level] = true
-    },
-    removeSubLevel(level) {
-      const index = level - 1
-      this.$set(this.categoryVisibleArray, index + 1, false)
-    },
+    // onChangeCategory(level) {
+    //   const index = level - 1
+    //   if (this.formData.categories2[index]) {
+    //     window.commonService.find('BusinessCategory', { pid: this.formData.categories2[index] }).then(data => {
+    //       this.$set(this.categoryVisibleArray, index + 1, data.length > 0)
+    //       this.categoryOptions2[index + 1] = data
+    //     })
+    //   }
+    // },
+    // onClearCategory(level) {
+    //   const index = level - 1
+    //   this.$set(this.categoryVisibleArray, index + 1, false)
+    // },
+    // appendSubLevel(level) {
+    //   const index = level - 1
+    //   this.$set(this.categoryVisibleArray, index + 1, true)
+    //   // this.categoryVisibleArray[level] = true
+    // },
+    // removeSubLevel(level) {
+    //   const index = level - 1
+    //   this.$set(this.categoryVisibleArray, index + 1, false)
+    // },
     /** 当类型清单修改时，同步修改内容（重新取得下拉菜单） */
     updateCategoryOptions() {
-      let params
-      switch (this.currentCategoryDialog) {
-        case 'primary':
-          params = { pid: null }
-          break;
-        case 'secondary':
-          params = { pid: this.formData.categories.primary }
-          break
-        case 'tertiary':
-          params = { pid: this.formData.categories.secondary }
-          break
-      }
-      window.commonService.find('BusinessCategory', params).then(data => {
-        this.categoryOptions[this.currentCategoryDialog] = data
+      window.replaceService.findBusinessCategoryCascaded().then(data => {
+        this.businessCategoryOptions = data
+      }).catch(err => {
+        console.log(err)
+        this.$toast.error(`业务类型加载失败！`)
       })
     },
     /** 取得指定index对应的类型名称 */
-    getCatLevel(index) {
-      return index == 1 ? 'primary' : index == 2 ? 'secondary' : 'tertiary'
-    },
-    removeCategory(catIndex) {
-      switch (catIndex) {
-        case 3:
-          this.tertiaryCategoryDisplayFlag = false
-          this.formData.categories.tertiary = null
-          break;
-        case 2:
-          this.secondaryCategoryDisplayFlag = false
-          this.formData.categories.secondary = null
-          break;
-        default:
-      }
-    },
-    appendCategory(catIndex) {
-      const curCatLevel = this.getCatLevel(catIndex)
-      const params = { pid: this.formData.categories[curCatLevel] }
-      const nextCatLevel = this.getCatLevel(catIndex + 1)
-      this[`${nextCatLevel}CategoryDisplayFlag`] = true
-      window.commonService.find('BusinessCategory', params).then(data => {
-        this.categoryOptions[nextCatLevel] = data
-      })
-    },
+    // getCatLevel(index) {
+    //   return index == 1 ? 'primary' : index == 2 ? 'secondary' : 'tertiary'
+    // },
+    // removeCategory(catIndex) {
+    //   switch (catIndex) {
+    //     case 3:
+    //       this.tertiaryCategoryDisplayFlag = false
+    //       this.formData.categories.tertiary = null
+    //       break;
+    //     case 2:
+    //       this.secondaryCategoryDisplayFlag = false
+    //       this.formData.categories.secondary = null
+    //       break;
+    //     default:
+    //   }
+    // },
+    // appendCategory(catIndex) {
+    //   const curCatLevel = this.getCatLevel(catIndex)
+    //   const params = { pid: this.formData.categories[curCatLevel] }
+    //   const nextCatLevel = this.getCatLevel(catIndex + 1)
+    //   this[`${nextCatLevel}CategoryDisplayFlag`] = true
+    //   window.commonService.find('BusinessCategory', params).then(data => {
+    //     this.categoryOptions[nextCatLevel] = data
+    //   })
+    // },
     onBusinessCategoryChange() {
       window.replaceService
-        .listTemplateByBusinessCategoryId(this.formData.businessCategory)
-        .then((data) => {
-          // data.length > 0 && (this.formData.template = data[0]);
+        .findTemplateByBcId({ bcId: this.formData.businessCategory })
+        .then(data => {
           this.formData.templates = data;
-        });
+          this.$refs.templateTabs.callSlider()
+        }).catch(err => {
+          console.log(err)
+          this.$toast.error(`模板加载失败！`)
+        })
     },
     formatDate({ value, format }) {
       return value && format ? moment(value).format(format) : null;
@@ -566,7 +497,8 @@ export default {
     showTemplateDialog() {
       this.dialog.showTemplateDetail = true
       this.$set(this, 'newTemplate', {
-        id: uuidv4(), // TODO id由sqlite自动生成
+        // id: uuidv4(), // TODO id由sqlite自动生成
+        id: null,
         name: null,
         path: null,
         bcId: this.formData.businessCategory
@@ -580,9 +512,17 @@ export default {
           type: "template",
         })
     },
-    deleteTemplateFile({ path }) {
+    deleteTemplateFile(path) {
+      console.log("删除模板文件", path)
       return window.ipc.invoke("deleteFile", {
         filePath: path
+      })
+      .then(() => {
+        this.$toast.success('模板文件删除成功！')
+      })
+      .catch(err => {
+        console.warn(err)
+        this.$toast.warning('模板文件删除失败！')
       })
     },
     saveTemplate(newTemplate) {
@@ -590,20 +530,14 @@ export default {
         for (const key in preResult) {
           newTemplate[key] && (newTemplate[key] = preResult[key])
         }
-        window.commonService.save('Template', newTemplate).then(result=>{
-          if (result.success) {
-            this.dialog.showTemplateDetail = false
-            this.onBusinessCategoryChange()
-            window.ipc.send('notification', {
-              title: "提示",
-              body: `模板保存成功！`
-            })
-          } else {
-            window.ipc.send('notification', {
-              title: "错误",
-              body: `模板保存失败！`
-            })
-          }
+        console.log(newTemplate)
+        window.replaceService.saveTemplate(newTemplate).then(()=>{
+          this.dialog.showTemplateDetail = false
+          // this.onBusinessCategoryChange()
+          this.$toast.success(`模板保存成功！`)
+        }).catch(err => {
+          console.log(err)
+          this.$toast.error(`模板保存失败！`)
         })
       })
     },
@@ -617,6 +551,9 @@ export default {
     showCategoryDialog(index) {
       this.dialog.showCategoryList = true;
       this.currentCategoryDialog = this.getCatLevel(index)
+    },
+    showBusinessCategoryListDialog() {
+      this.dialog.showBusinessCategoryList = true
     },
     showTemplateListDialog() {
       this.dialog.showTemplateList = true;
@@ -645,7 +582,7 @@ export default {
       businessCategoryOptions: [
       ],
       formData: {
-        businessCategory: '85b4a210-d234-4791-bdd8-19a365ea222a',
+        businessCategory: null, //'85b4a210-d234-4791-bdd8-19a365ea222a',
         categories: {
           primary: null,
           secondary: null,
@@ -708,19 +645,17 @@ export default {
       },
       dialog: {
         showCategoryList: false,
+        showBusinessCategoryList: false,
         showTemplateList: false,
         showTemplateDetail: false,
       },
       newTemplate: {},
       editTemplateMode: false, // TODO 没用？
       templatePreview: null, // TODO 没用？
-      tab: null,
+      tab: 0,
+      adminMode: false,
+      unsubscribe: null
     };
   },
 };
 </script>
-<style>
-.rotate-transition-120 {
-  transform: rotate(120deg);
-}
-</style>

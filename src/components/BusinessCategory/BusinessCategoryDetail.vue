@@ -131,7 +131,7 @@ export default {
     pid: String,
     name: String,
     icon: String,
-    sort: Number,
+    ordinal: Number,
     title: String,
     isEdit: Boolean,
     visible: Boolean
@@ -161,10 +161,10 @@ export default {
         this.$set(this.formData, 'icon', val ? val.substring(4) : null)
       }
     },
-    sort: {
+    ordinal: {
       immediate: true,
       handler(val) {
-        this.$set(this.formData, 'sort', val)
+        this.$set(this.formData, 'ordinal', val)
       }
     },
     visible: {
@@ -187,7 +187,7 @@ export default {
     //       id: this.id,
     //       name: this.name,
     //       icon: this.icon ? this.icon.substring(4) : null,
-    //       sort: this.sort,
+    //       ordinal: this.ordinal,
     //       templates: []
     //     }
     //   },
@@ -195,7 +195,7 @@ export default {
     //   //   this.$emit('input', newVal.id)
     //   //   this.$emit('input', newVal.name)
     //   //   this.$emit('input', newVal.icon)
-    //   //   this.$emit('input', newVal.sort)
+    //   //   this.$emit('input', newVal.ordinal)
     //   // }
     // },
     selectAllIcon () {
@@ -214,7 +214,7 @@ export default {
         pid: this.formData.pid,
         name: this.formData.name,
         icon: `mdi-${this.formData.icon}`,
-        sort: this.formData.sort,
+        ordinal: this.formData.ordinal,
         templates: this.templates
       })
     },

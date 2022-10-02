@@ -7,11 +7,17 @@ Vue.use(Vuetify);
 
 export default new Vuetify({
   theme: {
+    dark: false,
     themes: {
       light: {
-        primary: colors.indigo.lighten1, // #E53935
-        // secondary: colors.red.lighten4, // #FFCDD2
-        // accent: colors.indigo.base, // #3F51B5
+        scrollbarTrack: colors.grey.lighten4,
+        scrollbarThumb: colors.grey.lighten1,
+        scrollbarThumbHover: colors.grey.darken1
+      },
+      dark: {
+        scrollbarTrack: colors.grey.darken1,
+        scrollbarThumb: colors.grey.lighten1,
+        scrollbarThumbHover: colors.grey.lighten4
       },
     },
     options: { customProperties: true, },
@@ -19,5 +25,5 @@ export default new Vuetify({
   lang: {
     locales: { zhHans },
     current: 'zhHans'
-  }
+  },
 });
