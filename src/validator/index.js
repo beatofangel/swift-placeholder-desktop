@@ -12,6 +12,17 @@ Object.keys(rules).forEach(rule => {
 });
 extend('requiredInput', rules['required'])
 extend('requiredSelect', rules['required'])
+extend('requiredInputObject', {
+  params: [ 'field' ],
+  validate: (value, { field }) => {
+    if (value && typeof value == 'object') {
+      return !!value[field]
+    } else {
+      return !!value
+    }
+  },
+  computesRequired: true
+})
 
 // const v_langs = [ zh/* , en */ ];
 // Object.keys(locales).forEach(lang => {

@@ -3,7 +3,15 @@ const { get, list, runInternal } = require("./baseService");
 const { v4: uuidv4 } = require("uuid");
 const moment = require("moment");
 const { sequelize, QueryTypes, Op, Models, beginTx } = require("../database/sequelize");
-const { BusinessCategoryModel, TemplateModel, BcTplRelModel, PlaceholderGroupModel, PlaceholderItemModel, PhGrpItmRelModel } = Models;
+const {
+  BusinessCategoryModel,
+  TemplateModel,
+  TplPhGrpRelModel,
+  BcTplRelModel,
+  PlaceholderGroupModel,
+  PlaceholderItemModel,
+  PhGrpItmRelModel
+} = Models;
 
 // TODO 添加功能，根据级联业务类型选择器中选择的业务类型，查询所有子类型（含自身）所关联的模板（排除当前业务类型已经关联的模板），
 // 用于添加模板时，可以从现有模板中选择。 *原有功能为添加新模板
@@ -148,7 +156,7 @@ export async function bulkSaveBusinessCategory(items) {
 /**
  * 根据业务分类查询模板
  * @param { {String} } param0 
- * @returns 业务分类清单
+ * @returns 业务分类列表
  */
 export async function findTemplateByBcId({ bcId }) {
   return await beginTx(async tx => {
@@ -237,7 +245,7 @@ export async function bulkSaveTemplate(items) {
 /**
  * 根据模板查询占位符
  * @param { {String} } param0 
- * @returns 业务分类清单
+ * @returns 业务分类列表
  */
  export async function findPlaceholderByTplId({ tplId }) {
   return await beginTx(async tx => {
@@ -284,40 +292,234 @@ export async function bulkSaveTemplate(items) {
   });
 }
 
+/**
+ * 查询所有不属于当前模板的占位符分组
+ * 
+ * @param {*} param0 
+ */
+export async function findPlaceholderByTplIdExcluded({ tplId }) {
+  return await beginTx(async tx => {
+    return await PlaceholderGroupModel.findAll({
+      attributes: ["id", "name"],
+      include: [
+        {
+          model: TemplateModel,
+          attributes: [ "id", "name" ],
+          where: {
+            id: {
+              [Op.ne]: tplId
+            }
+          }
+        },
+        {
+          model: PlaceholderItemModel,
+        }
+      ],
+      order: [
+        [sequelize.col("Templates->TplPhGrpRel.ordinal")],
+        [sequelize.col("PlaceholderItems->PhGrpItmRel.ordinal")],
+      ],
+    }).then(result => 
+      result.map(({ dataValues: group, Templates: tpls, PlaceholderItems: phItms }) => {
+        return {
+          id: group.id,
+          name: group.name,
+          templates: tpls.map(({ dataValues: tpl })=>{
+            return {
+              id: tpl.id,
+              name: tpl.name
+            }
+          }),
+          placeholderItems: phItms.map(({ dataValues: phItm }) => {
+            return {
+              id: phItm.id,
+              name: phItm.name,
+              type: phItm.type,
+              format: phItm.format,
+              ordinal: phItm.PhGrpItmRel.dataValues.ordinal
+            }
+          })
+        }
+      })
+    )
+  })
+}
 
-// /**
-//  * 根据业务分类查询模板
-//  * @param { {String} } param0 
-//  * @returns 业务分类清单
-//  */
-//  export async function findTemplateByBcId({ bcId }) {
+
+/**
+ * 保存占位符分组
+ * 
+ * @param {*} item 
+ * @returns 
+ */
+ export async function savePlaceholderGroup(item) {
+  return await bulkSavePlaceholderGroup([item]);
+}
+
+
+/**
+ * 批量保存占位符分组 TODO 待测试，模板编辑也需要考虑复杂情况
+ * 
+ * @param {[]} items 
+ * @returns 
+ */
+ export async function bulkSavePlaceholderGroup(items) {
+  return await beginTx(async tx => {
+    for (const item of items) {
+      const template = await TemplateModel.findByPk(item.tplId)
+      if (item.delete) {
+        // TODO 是否会残留未与分组绑定的占位符？
+        await PlaceholderGroupModel.destroy({
+          where: {
+            id: item.id,
+          },
+        })
+      } else if (item.insert) {
+        const placeholderGroup = await PlaceholderGroupModel.create({
+          name: item.name,
+        })
+        await template.addPlaceholderGroups(
+          placeholderGroup, {
+            through: TplPhGrpRelModel
+          }
+        )
+
+        for (const phItem of item.placeholderItems) {
+          if (phItem.delete) {
+            // dead code
+            await PlaceholderItemModel.destroy({
+              where: {
+                id: phItem.id,
+              },
+            })
+          } else if (phItem.insert) {
+            await placeholderGroup.addPlaceholderItems(
+              await PlaceholderItemModel.create({
+                name: phItem.name,
+                type: phItem.type,
+                format: phItem.format
+              }), {
+                through: PhGrpItmRelModel
+              }
+            )
+          } else if (phItem.sort) {
+            // dead code
+            const phGrpItmRel = await PhGrpItmRelModel.findOne({
+              where: {
+                phGrpId: phItem.phGrpId,
+                phItmId: phItem.id
+              }
+            })
+            await phGrpItmRel.update({
+              ordinal: phItem.ordinal
+            })
+          } else {
+            // dead code
+            const placeholderItem = await PlaceholderItemModel.findByPk(itphItemem.id)
+            await placeholderItem.update({
+              name: phItem.name,
+              type: phItem.type,
+              format: phItem.format
+            })
+          }
+        }
+      } else if (item.sort) {
+        const tplPhGrpRel = await TplPhGrpRelModel.findOne({
+          where: {
+            tplId: item.tplId,
+            phGrpId: item.id
+          }
+        })
+        await tplPhGrpRel.update({
+          ordinal: item.ordinal
+        })
+      } else {
+        const placeholderGroup = await PlaceholderGroupModel.findByPk(item.id)
+        await placeholderGroup.update({
+          name: item.name,
+        })
+        
+        for (const phItem of item.placeholderItems) {
+          if (phItem.delete) {
+            await PlaceholderItemModel.destroy({
+              where: {
+                id: phItem.id,
+              },
+            })
+          } else if (phItem.insert) {
+            await placeholderGroup.addPlaceholderItems(
+              await PlaceholderItemModel.create({
+                name: phItem.name,
+                type: phItem.type,
+                format: phItem.format
+              }), {
+                through: PhGrpItmRelModel
+              }
+            )
+          } else if (phItem.sort) {
+            const phGrpItmRel = await PhGrpItmRelModel.findOne({
+              where: {
+                phGrpId: phItem.phGrpId,
+                phItmId: phItem.id
+              }
+            })
+            await phGrpItmRel.update({
+              ordinal: phItem.ordinal
+            })
+          } else {
+            const placeholderItem = await PlaceholderItemModel.findByPk(itphItemem.id)
+            await placeholderItem.update({
+              name: phItem.name,
+              type: phItem.type,
+              format: phItem.format
+            })
+          }
+        }
+      }
+    }
+  })
+}
+
+// export async function bulkSavePlaceholderItem({ items }) {
 //   return await beginTx(async tx => {
-//     return await TemplateModel.findAll({
-//       attributes: ["id", "name", "path"],
-//       include: [
-//         {
-//           model: BusinessCategoryModel,
-//           where: {
-//             id: bcId,
-//           },
-//         },
-//       ],
-//       order: [ [sequelize.col("BusinessCategories->BcTplRel.ordinal")], ],
-//       raw: true,
-//       nest: true,
-//     }).then((result) =>
-//       result.map((item) => {
-//         return {
-//           id: item.id,
-//           name: item.name,
-//           path: item.path,
-//           ordinal: item.BusinessCategories.BcTplRel.ordinal,
-//           bcId: item.BusinessCategories.id
-//         };
-//       })
-//     );
-//   });
+//     const 
+//   })
 // }
+
+// 新增分组： 模板关系（自动） <- 占位符分组 + 占位符(*1) -> 占位符关系（自动）
+// 修改分组： 占位符分组 + 占位符(*1) -> 占位符关系（自动）
+// 删除分组： 模板关系（自动） <- 占位符分组 + 占位符(*1) -> 占位符关系（自动）
+// *1 新增占位符时，自动检测是否是已经存在的占位符，已存在则不新建占位符。
+//    修改占位符时，自动检测该占位符是否已与其他占位符分组建立关系。
+//        若占位符已被其他模板使用，则提示用户此次修改会影响其他模板是否继续
+//            是：修改
+//            否：取消修改 注：正确操作为修改模板文件中的占位符名称后覆盖当前模板文件（TODO 此操作会废除原有模板并断开与占位符分组的关系））
+/**
+ * 新增占位符分组（TODO 可以选择已经存在的占位符分组，是否根据模板中读取的占位符列表来筛选占位符分组？？）：
+ *     1. 插入占位符分组表（optional）
+ *     2. 插入模板占位符分组关系表
+ *     3. 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ */
+
 
 // /**
 //  * 保存模板

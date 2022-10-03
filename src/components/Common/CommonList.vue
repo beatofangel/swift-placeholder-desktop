@@ -1,11 +1,11 @@
 <template>
   <v-card :flat="flat">
     <v-card-title v-if="hideToolBar" class="d-flex justify-center">
-      <span class="text-h5 ml-1 mt-1">{{ title }}清单</span>
+      <span class="text-h5 ml-1 mt-1">{{ title }}列表</span>
     </v-card-title>
     <v-toolbar v-else color="primary" dark>
       <v-icon>mdi-format-list-bulleted</v-icon>
-      <span class="text-h5 ml-1 mt-1">{{ title }}清单</span>
+      <span class="text-h5 ml-1 mt-1">{{ title }}列表</span>
       <v-spacer></v-spacer>
       <v-btn @click="onClose" fab plain small>
         <v-icon>mdi-close</v-icon>
@@ -172,12 +172,11 @@ export default {
     },
   },
   methods: {
-    // TODO 考虑如何处理pid：第一级拿不到，后面两级当没有数据时也拿不到？？
     createNewItem() {
       const rst = {}
-      this.itemNames.forEach(e=>{
-        rst[e] = e == 'ordinal' ? (this.items.length > 0 ? this.items.map(i=>i.ordinal).sort((a,b)=>b-a)[0] + 1 : 1) : null
-      })
+      // this.itemNames.forEach(e=>{
+      //   rst[e] = e == 'ordinal' ? (this.items.length > 0 ? this.items.map(i=>i.ordinal).sort((a,b)=>b-a)[0] + 1 : 1) : null
+      // })
       return rst
     },
     onDragRow() {

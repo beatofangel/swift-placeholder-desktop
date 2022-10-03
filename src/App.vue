@@ -69,6 +69,16 @@
                       :label="setting.name"
                       @change="settingChangeHandler(setting)"
                     ></v-switch>
+                    <v-text-field
+                      v-else-if="setting.type === 'TEXT'"
+                      v-model="settings[key].value"
+                      :label="setting.name"
+                      dense
+                      outlined
+                    ></v-text-field>
+                    <template v-else>
+                      {{ setting }}
+                    </template>
                   </v-card-title>
                   <v-card-text class="grey--text">
                     <v-icon small>mdi-information-variant</v-icon>{{ setting.description }}
@@ -136,6 +146,11 @@ export default {
       localStorage.setItem("darkTheme", this.$vuetify.theme.dark.toString());
     }
 
+    window.settingService.findSettingAll().then(settings => {
+      window.store.initSettings(settings)
+      this.settings = settings
+    })
+
     window.ipc.invoke("getAppVersion").then((version) => {
       this.appVersion = version;
     });
@@ -169,14 +184,14 @@ export default {
     // console.log(remote.getGlobal('sharedObject').db)
   },
   watch: {
-    "dialog.settingDialog"(val) {
-      if (val) {
-        window.settingService.findSettingAll().then(settings => {
-          window.store.initSettings(settings)
-          this.settings = settings
-        })
-      }
-    }
+    // "dialog.settingDialog"(val) {
+    //   if (val) {
+    //     window.settingService.findSettingAll().then(settings => {
+    //       window.store.initSettings(settings)
+    //       this.settings = settings
+    //     })
+    //   }
+    // }
   },
   computed: {
     settingRow() {

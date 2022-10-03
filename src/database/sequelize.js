@@ -132,6 +132,25 @@ const TplPhGrpRelModel = sequelize.define('TplPhGrpRel', {
     allowNull: false,
     defaultValue: 0
   },
+}, {
+  hooks: {
+    // INSERT: 实现序号自增
+    beforeBulkCreate: async (instances, options) => {
+      console.log('beforeBulkCreate', options)
+      for (const instance of instances) {
+        const cnt = await TplPhGrpRelModel.count({
+          where: {
+            tplId: instance.tplId
+          }
+        })
+        instance.ordinal = cnt + 1
+        console.log(instance)
+      }
+    },
+    afterBulkDestroy: async (options) => {
+      console.log('afterBulkDestroy', options)
+    }
+  }
 })
 
 /** 占位符分组与项目关系Model */
@@ -141,6 +160,25 @@ const PhGrpItmRelModel = sequelize.define('PhGrpItmRel', {
     allowNull: false,
     defaultValue: 0
   },
+}, {
+  hooks: {
+    // INSERT: 实现序号自增
+    beforeBulkCreate: async (instances, options) => {
+      console.log('beforeBulkCreate', options)
+      for (const instance of instances) {
+        const cnt = await PhGrpItmRelModel.count({
+          where: {
+            phGrpId: instance.phGrpId
+          }
+        })
+        instance.ordinal = cnt + 1
+        console.log(instance)
+      }
+    },
+    afterBulkDestroy: async (options) => {
+      console.log('afterBulkDestroy', options)
+    }
+  }
 })
 
 const SettingModel = sequelize.define('Setting', {

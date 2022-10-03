@@ -24,16 +24,16 @@
             color="transparent"
             elevation="0"
             class="ma-4 d-flex"
-            :class="{ 'pointer-events-none': !createPlaceholderGroup }"
+            :class="{ 'pointer-events-none': !showPlaceholderDetail }"
             style="position: absolute; bottom: 30px; left: 0; width: 80%"
           >
             <draggable
               v-model="placeholdersInTemplate"
               :animation="200"
               :group="{ name: 'placeholder' }"
-              :disabled="!createPlaceholderGroup"
+              :disabled="!showPlaceholderDetail"
               ghostClass="ghost"
-              :class="{ 'placeholder-drop-area': createPlaceholderGroup }"
+              :class="{ 'placeholder-drop-area': showPlaceholderDetail }"
               style="
                 min-height: 100px;
                 width: 100%;
@@ -47,19 +47,19 @@
               <template v-for="{ text, unbound } in placeholdersInTemplate">
                 <v-chip
                   v-if="
-                    (createPlaceholderGroup && unbound) ||
-                    !createPlaceholderGroup
+                    (showPlaceholderDetail && unbound) ||
+                    !showPlaceholderDetail
                   "
                   class="ma-2"
                   :class="{
-                    'chip-draggable': createPlaceholderGroup,
-                    'chip-regular': !createPlaceholderGroup,
+                    'chip-draggable': showPlaceholderDetail,
+                    'chip-regular': !showPlaceholderDetail,
                   }"
                   :disabled="!unbound"
                   :label="!unbound"
                   :color="`${unbound ? 'warning' : ''} lighten-1`"
                   :outlined="
-                    !createPlaceholderGroup && !unbound && !$vuetify.theme.dark
+                    !showPlaceholderDetail && !unbound && !$vuetify.theme.dark
                   "
                   :key="text"
                 >
@@ -96,8 +96,8 @@
             bottom
             right
             fab
-            :disabled="createPlaceholderGroup"
-            @click="createPlaceholderGroup = true"
+            :disabled="showPlaceholderDetail"
+            @click="showPlaceholderDetail = true"
           >
             <v-icon large>mdi-tag-plus</v-icon>
           </v-btn>
@@ -111,7 +111,7 @@
             bottom
             right
             fab
-            :disabled="createPlaceholderGroup"
+            :disabled="showPlaceholderDetail"
             @click="previewPdf(true)"
           >
             <v-icon large>{{
@@ -122,10 +122,18 @@
       </v-card>
       <v-card class="col-6 pa-0 mb-1" elevation="0" tile>
         <!-- <v-fade-transition :group="true" leave-absolute> -->
-
-        <validation-observer ref="observer" v-slot="{ invalid }">
+        <placeholder-detail
+          v-if="showPlaceholderDetail"
+          :tplId="tplId"
+          :placeholder="placeholderNewGroup"
+          :placeholdersInTemplate="placeholdersInTemplate"
+          @cancel="onCancel"
+          @delete="onDelete"
+          @save="onSave"
+        ></placeholder-detail>
+        <!-- <validation-observer ref="observer" v-slot="{ invalid }">
           <v-form @submit.prevent="onSave">
-            <v-card v-if="createPlaceholderGroup" elevation="0" tile>
+            <v-card v-if="showPlaceholderDetail" elevation="0" tile>
               <v-data-table
                 key="placeholder"
                 fixed-header
@@ -221,7 +229,6 @@
                       style="height: 100%; width: 100%"
                       class="d-flex justify-center"
                     >
-                      <!-- <div v-for="item in newPlaceholders" :key="item.name"></div> -->
                     </draggable>
                   </v-card>
                 </template>
@@ -235,10 +242,10 @@
               </v-card-actions>
             </v-card>
           </v-form>
-        </validation-observer>
+        </validation-observer> -->
         <!-- </v-fade-transition>
         <v-fade-transition :group="true" leave-absolute> -->
-        <v-card v-if="!createPlaceholderGroup" elevation="0" tile>
+        <v-card v-if="!showPlaceholderDetail" elevation="0" tile>
           <v-toolbar elevation="0">
             <v-autocomplete
               prepend-icon="mdi-magnify"
@@ -326,6 +333,11 @@
                 {{ calcReplaceProgressFormated(item.placeholders) }}
               </v-tooltip>
             </template>
+            <template v-slot:[`item.value`]="{ item }">
+              <div class="d-flex justify-end">
+                <v-icon @click="onEditPlaceholder(item)" color="primary lighten-2">mdi-pencil</v-icon>
+                </div>
+            </template>
             <template v-slot:expanded-item="{ item }">
               <td colspan="3" class="px-0">
                 <v-card class="ma-2" elevation="0" tile>
@@ -354,7 +366,7 @@
                             : 'warning lighten-1'
                         "
                       >
-                        {{ formatPlaceholder(item) }}
+                        {{ $formatPlaceholder(item) }}
                       </v-chip>
                     </template>
                     <template v-slot:[`item.value`]="{ item }">
@@ -416,8 +428,9 @@
 <script>
 import moment from "moment";
 import draggable from "vuedraggable";
-import { v4 as uuidv4 } from "uuid";
+// import { v4 as uuidv4 } from "uuid";
 import _ from "lodash";
+import PlaceholderDetail from "../Placeholder/PlaceholderDetail.vue"
 // import nzhcn from "nzh/cn";
 export default {
   props: {
@@ -426,97 +439,83 @@ export default {
   },
   components: {
     draggable,
+    PlaceholderDetail
   },
   mounted() {
-    window.ipc.receive("previewPdf", ({ id, data }) => {
-      if (this.tplId == id) {
-        // this.pdfPath = path
-        var blob = new Blob([data], { type: "application/pdf" });
-        this.pdfPath = URL.createObjectURL(blob);
-        this.templatePreviewLoading = false;
-      }
-    });
-    window.ipc.receive("readPlaceholderFromTemplate", ({ id, ph }) => {
-      if (this.tplId == id) {
-        this.placeholdersInTemplate = ph.map((e) => {
-          return {
-            text: e,
-            unbound:
-              this.placeholderGroups.findIndex(
-                (group) =>
-                  group.placeholders.findIndex(
-                    (placeholder) => this.formatPlaceholder(placeholder) == e
-                  ) != -1
-              ) == -1,
-          };
-        });
-        this.placeholderGroups.forEach((group) => {
-          group.placeholders.forEach((placeholder) => {
-            placeholder.disable = !ph.find(
-              (e) => this.formatPlaceholder(placeholder) == e
-            );
-          });
-        });
-        // this.placeholders.forEach(item=>{
-        //   item.disable = !ph.find(e=>this.formatPlaceholder(item) == e)
-        //   console.log(item.name, item.disable)
-        // })
-      }
-    });
-    window.replaceService
-      .findPlaceholderByTplId({ tplId: this.tplId })
-      .then((data) => {
-        this.placeholderGroups = data;
-        this.placeholderGroupsExpanded = this.placeholderGroups;
-      });
+    this.initTemplate()
+    // window.ipc.receive("previewPdf", ({ id, data }) => {
+    //   if (this.tplId == id) {
+    //     // this.pdfPath = path
+    //     var blob = new Blob([data], { type: "application/pdf" });
+    //     this.pdfPath = URL.createObjectURL(blob);
+    //     this.templatePreviewLoading = false;
+    //   }
+    // });
+    // window.ipc.receive("readPlaceholderFromTemplate", ({ id, ph }) => {
+    //   if (this.tplId == id) {
+    //     this.placeholdersInTemplate = ph.map((e) => {
+    //       return {
+    //         text: e,
+    //         unbound:
+    //           this.placeholderGroups.findIndex(
+    //             (group) =>
+    //               group.placeholders.findIndex(
+    //                 (placeholder) => this.$formatPlaceholder(placeholder) == e
+    //               ) != -1
+    //           ) == -1,
+    //       };
+    //     });
+    //     this.placeholderGroups.forEach((group) => {
+    //       group.placeholders.forEach((placeholder) => {
+    //         placeholder.disable = !ph.find(
+    //           (e) => this.$formatPlaceholder(placeholder) == e
+    //         );
+    //       });
+    //     });
+    //   }
+    // });
     // window.replaceService
-    //   .listPlaceholderGroupByTemplateId(this.tplId)
+    //   .findPlaceholderByTplId({ tplId: this.tplId })
     //   .then((data) => {
     //     this.placeholderGroups = data;
-    //     // expand all
     //     this.placeholderGroupsExpanded = this.placeholderGroups;
     //   });
-    // window.replaceService
-    //   .listPlaceholderByTemplateId(this.tplId)
-    //   .then((data) => {
-    //     this.placeholders = data;
-    //   });
-    this.previewPdf();
+    // this.previewPdf();
   },
   watch: {
     drag(val) {
       console.log("drag variable:", val);
     },
-    newPlaceholders: {
-      deep: true,
-      handler(newVal, oldVal) {
-        console.log(newVal, oldVal);
-        if (newVal.length == 0) return;
-        if (newVal.length > oldVal.length) {
-          // add item
-          _.difference(newVal, oldVal).forEach((newGroup) => {
-            this.placeholderNewGroup.items.push({
-              id: uuidv4(),
-              name: this.parsePlaceholder(newGroup.text),
-              type: "text",
-              format: null,
-            });
-          });
-          // const newGroup = _.difference(newVal, oldVal)[0]
-          // // const newGroup = newVal[newVal.length-1]
-          // this.placeholderNewGroup.items.push({
-          //   id: uuidv4(),
-          //   name: this.parsePlaceholder(newGroup.text),
-          //   type: 'text',
-          //   format: null
-          // })
-        }
-        if (newVal.length < oldVal.length) {
-          // delete item
-          // nothing todo
-        }
-      },
-    },
+    // newPlaceholders: {
+    //   deep: true,
+    //   handler(newVal, oldVal) {
+    //     console.log(newVal, oldVal);
+    //     if (newVal.length == 0) return;
+    //     if (newVal.length > oldVal.length) {
+    //       // add item
+    //       _.difference(newVal, oldVal).forEach((newGroup) => {
+    //         this.placeholderNewGroup.items.push({
+    //           id: uuidv4(),
+    //           name: this.parsePlaceholder(newGroup.text),
+    //           type: "text",
+    //           format: null,
+    //         });
+    //       });
+    //       // const newGroup = _.difference(newVal, oldVal)[0]
+    //       // // const newGroup = newVal[newVal.length-1]
+    //       // this.placeholderNewGroup.items.push({
+    //       //   id: uuidv4(),
+    //       //   name: this.parsePlaceholder(newGroup.text),
+    //       //   type: 'text',
+    //       //   format: null
+    //       // })
+    //     }
+    //     if (newVal.length < oldVal.length) {
+    //       // delete item
+    //       // nothing todo
+    //     }
+    //   },
+    // },
     // tplId(val) {
     //   window.replaceService
     //     .listPlaceholderGroupByTemplateId(val)
@@ -559,6 +558,46 @@ export default {
     },
   },
   methods: {
+    initTemplate() {
+      window.ipc.receive("previewPdf", ({ id, data }) => {
+        if (this.tplId == id) {
+          // this.pdfPath = path
+          var blob = new Blob([data], { type: "application/pdf" });
+          this.pdfPath = URL.createObjectURL(blob);
+          this.templatePreviewLoading = false;
+        }
+      });
+      window.ipc.receive("readPlaceholderFromTemplate", ({ id, ph }) => {
+        if (this.tplId == id) {
+          this.placeholdersInTemplate = ph.map((e) => {
+            return {
+              text: e,
+              unbound:
+                this.placeholderGroups.findIndex(
+                  (group) =>
+                    group.placeholders.findIndex(
+                      (placeholder) => this.$formatPlaceholder(placeholder) == e
+                    ) != -1
+                ) == -1,
+            };
+          });
+          this.placeholderGroups.forEach((group) => {
+            group.placeholders.forEach((placeholder) => {
+              placeholder.disable = !ph.find(
+                (e) => this.$formatPlaceholder(placeholder) == e
+              );
+            });
+          });
+        }
+      });
+      window.replaceService
+        .findPlaceholderByTplId({ tplId: this.tplId })
+        .then((data) => {
+          this.placeholderGroups = data;
+          this.placeholderGroupsExpanded = this.placeholderGroups;
+        });
+      this.previewPdf();
+    },
     calcReplaceProgress(placeholders) {
       return (
         (placeholders.filter((ph) => !_.isEmpty(ph.value)).length /
@@ -579,14 +618,14 @@ export default {
         data: replaceFlag ? this.placeholders : [],
       });
     },
-    formatPlaceholder({ name }) {
-      return `$\{${name}}`;
-    },
-    parsePlaceholder(str) {
-      const regex = /\$\{(.*)\}/;
-      const arr = regex.exec(str);
-      return arr.length > 1 ? arr[1] : null;
-    },
+    // formatPlaceholder({ name }) {
+    //   return `$\{${name}}`;
+    // },
+    // parsePlaceholder(str) {
+    //   const regex = /\$\{(.*)\}/;
+    //   const arr = regex.exec(str);
+    //   return arr.length > 1 ? arr[1] : null;
+    // },
     formatDate({ value, format }) {
       return value && format ? moment(value).format(format) : "";
     },
@@ -598,79 +637,80 @@ export default {
       this.drag = false;
       console.log("drop:", obj);
     },
-    onDragRow(obj) {
-      this.drag = true;
-      console.log("dragrow:", obj);
+    // onDragRow(obj) {
+    //   this.drag = true;
+    //   console.log("dragrow:", obj);
+    // },
+    // onDropRow(obj) {
+    //   this.drag = false;
+    //   console.log("droprow:", obj);
+    // },
+    // onPlaceholderTypeChange(item, row) {
+    //   const option = this.placeholderTypeOptions.find((e) => e.value == item);
+    //   option && (row.format = option.format);
+    // },
+    onEditPlaceholder(item) {
+      this.showPlaceholderDetail = true;
+      console.log(item)
     },
-    onDropRow(obj) {
-      this.drag = false;
-      console.log("droprow:", obj);
+    onDelete(item) {
+      this.placeholdersInTemplate.push(item);
     },
-    onPlaceholderTypeChange(item, row) {
-      const option = this.placeholderTypeOptions.find((e) => e.value == item);
-      option && (row.format = option.format);
-    },
-    onDeletePlaceholder(item, index) {
-      this.placeholderNewGroup.items.splice(index, 1);
-      const newPlaceholderIndex = this.newPlaceholders.findIndex(
-        (e) => e.text == this.formatPlaceholder(item)
-      );
-      this.placeholdersInTemplate.push(
-        ...this.newPlaceholders.splice(newPlaceholderIndex, 1)
-      );
-    },
-    onCancel() {
-      this.createPlaceholderGroup = false;
-      this.placeholdersInTemplate.push(...this.newPlaceholders);
-      this.newPlaceholders.splice(0);
+    onCancel(items) {
+      this.showPlaceholderDetail = false;
+      this.placeholdersInTemplate.push(...items);
       this.placeholderNewGroup.group = null;
       this.placeholderNewGroup.items.splice(0);
     },
     onSave() {
-      const items = [];
-      this.placeholderNewGroup.items.forEach((ph, index) => {
-        items.push({
-          id: uuidv4(),
-          name: ph.name,
-          type: ph.type,
-          format: ph.format,
-          ordinal: index + 1,
-        });
-      });
-      window.commonService
-        .save("Placeholder", {
-          templateId: this.tplId,
-          groupId: uuidv4(),
-          groupName: this.placeholderNewGroup.group,
-          groupOrdinal: this.placeholderGroups.length + 1,
-          items: items,
-          insert: true,
-        })
-        .then(() => {
-          this.$toast.success(`${this.title}保存成功！`);
-          window.replaceService
-            .listPlaceholderGroupByTemplateId(this.tplId)
-            .then((data) => {
-              this.placeholderGroups = data;
-              // expand all
-              this.placeholderGroupsExpanded = this.placeholderGroups;
-            });
-          window.replaceService
-            .listPlaceholderByTemplateId(this.tplId)
-            .then((data) => {
-              this.placeholders = data;
-            });
-          this.previewPdf();
-          this.createPlaceholderGroup = false;
-          // reset
-          this.placeholderNewGroup.group = null;
-          this.placeholderNewGroup.items.splice(0);
-          this.newPlaceholders.splice(0);
-        })
-        .catch((err) => {
-          console.log(err);
-          this.$toast.error(`${this.title}保存失败！`);
-        });
+      this.showPlaceholderDetail = false;
+      this.placeholderNewGroup.group = null;
+      this.placeholderNewGroup.items.splice(0);
+      this.initTemplate()
+      // const items = [];
+      // this.placeholderNewGroup.items.forEach((ph, index) => {
+      //   items.push({
+      //     id: uuidv4(),
+      //     name: ph.name,
+      //     type: ph.type,
+      //     format: ph.format,
+      //     ordinal: index + 1,
+      //   });
+      // });
+      // window.commonService
+      //   .save("Placeholder", {
+      //     templateId: this.tplId,
+      //     groupId: uuidv4(),
+      //     groupName: this.placeholderNewGroup.group,
+      //     groupOrdinal: this.placeholderGroups.length + 1,
+      //     items: items,
+      //     insert: true,
+      //   })
+      //   .then(() => {
+      //     this.$toast.success(`${this.title}保存成功！`);
+      //     window.replaceService
+      //       .listPlaceholderGroupByTemplateId(this.tplId)
+      //       .then((data) => {
+      //         this.placeholderGroups = data;
+      //         // expand all
+      //         this.placeholderGroupsExpanded = this.placeholderGroups;
+      //       });
+      //     window.replaceService
+      //       .listPlaceholderByTemplateId(this.tplId)
+      //       .then((data) => {
+      //         this.placeholders = data;
+      //       });
+      //     this.previewPdf();
+      //     this.showPlaceholderDetail = false;
+      //     // reset
+      //     this.placeholderNewGroup.group = null;
+      //     this.placeholderNewGroup.items.splice(0);
+      //     this.newPlaceholders.splice(0);
+      //   })
+      //   .catch((err) => {
+      //     console.log(err);
+      //     this.$toast.error(`${this.title}保存失败！`);
+      //   });
     },
     changeDisplayMode(value) {
       console.log(value);
@@ -726,7 +766,7 @@ export default {
         },
       ],
       drag: false,
-      createPlaceholderGroup: false,
+      showPlaceholderDetail: false,
       placeholderNewGroupHeaders: [
         {
           text: "No.",
@@ -767,7 +807,7 @@ export default {
       rules: {
         group: { requiredInput: true },
       },
-      placeholderDisplayMode: 0, // 0：清单模式 1：问卷模式
+      placeholderDisplayMode: 0, // 0：列表模式 1：问卷模式
     };
   },
 };

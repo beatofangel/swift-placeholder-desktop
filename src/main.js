@@ -27,6 +27,30 @@ Vue.prototype.$forceCompute= function(computedName, forceUpdate /* default: true
 	// 	if (forceUpdate || typeof forceUpdate == 'undefined') this.$forceUpdate()
 	// }
 }
+String.prototype.format = function () {
+  // store arguments in an array
+  var args = arguments;
+  // use replace to iterate over the string
+  // select the match and check if the related argument is present
+  // if yes, replace the match with the argument
+  return this.replace(/{([0-9]+)}/g, function (match, index) {
+    // check if the argument is present
+    return typeof args[index] == 'undefined' ? match : args[index];
+  });
+};
+Vue.prototype.$formatPlaceholder = function(item) {
+  const name = typeof item == 'object' ? item.name : item
+  const { value } = window.store.get('settings.placeholderFormat')
+  return value.format(name)
+  // return `$\{${name}}`;
+},
+Vue.prototype.$parsePlaceholder = function(strPlaceholder) {
+  // const regex = /\$\{(.*)\}/;
+  const { value } = window.store.get('settings.placeholderRegex');
+  const regex = new RegExp(value);
+  const arr = regex.exec(strPlaceholder);
+  return arr.length > 1 ? arr[1] : null;
+}
 
 Vue.config.productionTip = false
 Vue.component('validation-provider', ValidationProvider)

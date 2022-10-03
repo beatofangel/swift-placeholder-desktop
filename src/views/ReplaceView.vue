@@ -83,12 +83,12 @@
                           >
                             <span class="text-h6">{{ name }}</span>
                           </v-tab>
-                          <v-hover v-slot="{ hover }" v-if="formData.businessCategory && formData.templates.length == 0">
+                          <v-hover v-slot="{ hover }" v-if="formData.businessCategory && formData.templates.length == 0 && isAdminMode">
                             <v-btn @click="showTemplateDialog" height="100%" color="transparent" depressed tile>
                               <v-icon :class="{ 'rotate-transition-180': hover }">mdi-plus</v-icon><span class="text-h6">添加模板</span>
                             </v-btn>
                           </v-hover>
-                          <v-hover v-slot="{ hover }" v-if="formData.businessCategory && formData.templates.length > 0">
+                          <v-hover v-slot="{ hover }" v-if="formData.businessCategory && formData.templates.length > 0 && isAdminMode">
                             <v-btn @click="showTemplateListDialog" height="100%" color="transparent" depressed tile>
                               <v-icon :class="{ 'rotate-transition-120': hover }">mdi-cog</v-icon>
                             </v-btn>
@@ -187,8 +187,9 @@ export default {
     BusinessCategoryList
   },
   mounted() {
+    this.adminMode = window.store.get('settings.adminMode').value
     this.unsubscribe = window.store.onDidChange('settings.adminMode', this.switchAdminMode)
-    this.switchAdminMode('settings.adminMode', window.store.get('settings.adminMode'))
+    // this.switchAdminMode('settings.adminMode', window.store.get('settings.adminMode'))
     this.updateCategoryOptions()
     // window.commonService.find('BusinessCategory', { pid: '319f8bd1-0210-4a45-83d5-c6cdd01af2a5' }).then(data => {
     //   console.log('BusinessCategory', data)
@@ -433,7 +434,7 @@ export default {
     //   const index = level - 1
     //   this.$set(this.categoryVisibleArray, index + 1, false)
     // },
-    /** 当类型清单修改时，同步修改内容（重新取得下拉菜单） */
+    /** 当类型列表修改时，同步修改内容（重新取得下拉菜单） */
     updateCategoryOptions() {
       window.replaceService.findBusinessCategoryCascaded().then(data => {
         this.businessCategoryOptions = data
