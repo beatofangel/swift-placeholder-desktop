@@ -11,7 +11,8 @@ import { v4 as uuidv4 } from 'uuid'
 import moment from 'moment'
 import numeral from 'numeral'
 import { sequelize } from './database/sequelize'
-import './store'
+import { initSettings } from './store'
+import { findSettingAll } from './service/settingService'
 
 // import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -43,6 +44,7 @@ async function createWindow() {
     height: screenSize.height,
     minWidth: screenSize.width,
     minHeight: screenSize.height,
+    frame: false,
     webPreferences: {
       preload: Path.join(__dirname, 'preload.js'),
       // Use pluginOptions.nodeIntegration, leave this alone
@@ -106,6 +108,10 @@ app.on('ready', async () => {
     }
   })
 
+  // 初始化设置
+  const settings = await findSettingAll()
+  initSettings(settings)
+
   // console.log(__dirname)
   // const tar = require('tar')
   // const child_process = require('child_process')
@@ -162,6 +168,25 @@ fs.existsSync(homedir) || fs.mkdir(homedir, err=>{
   }
 })
 
+// TODO 暂不支持多窗口
+ipcMain.handle('minimize', async () => {
+  const win = BrowserWindow.getFocusedWindow()
+  win.minimize()
+})
+
+ipcMain.handle('maximize', async () => {
+  const win = BrowserWindow.getFocusedWindow()
+  const maximized = win.isMaximized()
+  maximized ? win.unmaximize() : win.maximize()
+  return !maximized
+})
+
+ipcMain.handle('close', async event => {
+  const win = BrowserWindow.getFocusedWindow()
+  event.sender.isDevToolsOpened && event.sender.closeDevTools()
+  win.close()
+  // win.destroy()
+})
 
 // ipcMain.handle('toMain', async (event, data) => {
 //   console.log(data)
@@ -285,7 +310,7 @@ function formatReplacement({ value, type, format }) {
   return result
 }
 
-ipcMain.on('previewPdf', async (event, { id, path: tplPath, data }) => {
+ipcMain.on('previewPdf', async (event, { uid, id, path: tplPath, data }) => {
   const outputDir = app.getPath('temp')
   const sourceDoc = tplPath
   const tempUuid = uuidv4()
@@ -297,29 +322,33 @@ ipcMain.on('previewPdf', async (event, { id, path: tplPath, data }) => {
   try {
     exec(replaceCommandWindows, (error, stdout, stderr) => {
       if (error) {
-        console.log(error.toString())
+        console.error(error)
       } else {
         const placeholders = stdout ? stdout.split('\n') : []
         // console.log(stdout)
-        event.sender.send('readPlaceholderFromTemplate', { id: id, ph: placeholders })
+        event.sender.send(`readPlaceholderFromTemplate-${uid}`, { id: id, ph: placeholders })
         const inputDoc = outputDoc
         const convertCommandWindows = previewPdfCmd(outputDir, inputDoc)
         try {
           exec(convertCommandWindows, (error, stdout, stderr) => {
             if (error) {
-              console.log(error.toString())
+              console.error(error)
             } else {
               const oriPdf = Path.join(outputDir, `${tempUuid}.pdf`)
               const buffer = fs.readFileSync(oriPdf)
-              event.sender.send('previewPdf', { id: id, path: oriPdf, data: buffer })
+              event.sender.send(`previewPdf-${uid}`, { id: id, path: oriPdf, data: buffer })
             }
           })
         } catch (error) {
-          console.log(error.toString())
+          console.error(error)
         }
       }
     })
   } catch (error) {
     console.log(error.toString())
   }
+})
+
+process.on('unhandledRejection', error => {
+  console.error(error)
 })

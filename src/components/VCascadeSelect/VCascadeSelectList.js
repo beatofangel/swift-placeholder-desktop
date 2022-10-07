@@ -63,7 +63,8 @@ export default mixins(Colorable, Themeable).extend({
     },
     maxHeight: Number,
     isMenuActive: Boolean,
-    defaultItemCount: Number
+    defaultItemCount: Number,
+    scrollOffset: [Number, String],
   },
   mounted() {
     if (this.isMenuActive) {
@@ -96,8 +97,8 @@ export default mixins(Colorable, Themeable).extend({
               const selectedDom = this.$el.querySelector('div.v-list-item--active')
               if (selectedDom) {
                 const target = Number(selectedDom.ariaRowIndex) * 48 + 48
-                console.log('scroll to', target)
-                this.$vuetify.goTo(target, { container: `.auto-hide-scrollbar-${this.level}`, easing: 'easeInOutCubic', offset: -16 })
+                console.log('scroll to', target, this.scrollOffset)
+                this.$vuetify.goTo(target, { container: `.auto-hide-scrollbar-${this.level}`, easing: 'easeInOutCubic', offset: this.scrollOffset })
               }
             }
             // selectedDom && this.$nextTick(() => selectedDom.scrollIntoView()) // TODO 使用({ behavior: "smooth" }))后滚动失效

@@ -36,26 +36,31 @@
         >
           <template v-for="(item, index) in slotItems">
             <transition :name="!drag ? 'flip-list' : null" type="transition" :key="item.name">
-              <tr>
-                <template v-for="{ value, cellClass } in headers">
-                  <td v-if="value == 'data-table-select'" :key="value">
-                    <v-icon :color="isSelected(item) ? 'primary' : ''" @click="select(item, !isSelected(item))">{{ isSelected(item) ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank'}}</v-icon>
-                  </td>
-                  <td v-if="value == 'index'" class="text-start" :key="`item.${value}`">
-                    {{ index + 1 }}
-                  </td>
-                  <td v-if="!['index', 'data-table-select', 'actions'].includes(value)" :class="`text-start ${cellClass || ''}`" :key="`item.${value}`">
-                    <slot v-if="$scopedSlots[`item.${value}`]" :name="`item.${value}`" v-bind:item="item" v-on="$scopedSlots[`item.${value}`]"></slot>
-                    <template v-else>{{ item[value] }}</template>
-                  </td>
-                  <td v-if="value == 'actions'" class="text-center" :key="`item.${value}`">
-                    <v-row class="actions justify-center">
-                      <v-icon class="edit" @click="showEdit({...item, isEdit: true})">mdi-pencil</v-icon>
-                      <v-icon class="delete" @click="showConfirm({ ...item, delete: true})">mdi-delete</v-icon>
-                    </v-row>
-                  </td>
-                </template>
-              </tr>
+              <v-hover v-slot="{ hover }">
+                <tr>
+                  <template v-for="{ value, cellClass } in headers">
+                    <td v-if="value == 'data-table-select'" :key="value">
+                      <v-icon :color="isSelected(item) ? 'primary' : ''" @click="select(item, !isSelected(item))">{{ isSelected(item) ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank'}}</v-icon>
+                    </td>
+                    <td v-if="value == 'index'" class="text-start" :key="`item.${value}`">
+                      <v-icon v-if="hover" class="ml-n1">mdi-swap-vertical</v-icon>
+                      <template v-else>
+                        {{ index + 1 }}
+                      </template>
+                    </td>
+                    <td v-if="!['index', 'data-table-select', 'actions'].includes(value)" :class="`text-start ${cellClass || ''}`" :key="`item.${value}`">
+                      <slot v-if="$scopedSlots[`item.${value}`]" :name="`item.${value}`" v-bind:item="item" v-on="$scopedSlots[`item.${value}`]"></slot>
+                      <template v-else>{{ item[value] }}</template>
+                    </td>
+                    <td v-if="value == 'actions'" class="text-center" :key="`item.${value}`">
+                      <v-row class="actions justify-center">
+                        <v-icon class="edit" @click="showEdit({...item, isEdit: true})">mdi-pencil</v-icon>
+                        <v-icon class="delete" @click="handleDelete({ ...item, delete: true})">mdi-delete</v-icon>
+                      </v-row>
+                    </td>
+                  </template>
+                </tr>
+              </v-hover>
             </transition>
           </template>
           <tr v-if="slotItems.length == 0" class="v-data-table__empty-wrapper">
@@ -75,7 +80,12 @@
     <v-dialog width="500" v-model="dialog.showDetail">
       <slot v-bind="item" :title="title" :visible="dialog.showDetail" :cancel="handleCancel" :save="handleSave"></slot>
     </v-dialog>
-    <v-dialog width="500" v-model="dialog.showConfirm">
+    <!-- <confirm-dialog
+      v-model="dialog.showConfirm"
+      :message="`确定要删除该${title}？`"
+      @confirm="handleDelete({ ...item, delete: true})"
+    ></confirm-dialog> -->
+    <!-- <v-dialog width="500" v-model="dialog.showConfirm">
       <v-card>
         <v-card-title class="text-h5">{{ `确定要删除该${this.title}？` }}</v-card-title>
         <v-card-actions>
@@ -85,12 +95,13 @@
           <v-spacer></v-spacer>
         </v-card-actions>
       </v-card>
-    </v-dialog>
+    </v-dialog> -->
   </v-card>
 </template>
 
 <script>
 import draggable from "vuedraggable";
+// import ConfirmDialog from "./ConfirmDialog.vue"
 export default {
   props: {
     condition: {
@@ -124,7 +135,8 @@ export default {
     },
   },
   components: {
-    draggable
+    draggable,
+    // ConfirmDialog
   },
   mounted () {
   },
@@ -174,6 +186,7 @@ export default {
   methods: {
     createNewItem() {
       const rst = {}
+      this.cascade && (rst.pid = this.condition.pid)
       // this.itemNames.forEach(e=>{
       //   rst[e] = e == 'ordinal' ? (this.items.length > 0 ? this.items.map(i=>i.ordinal).sort((a,b)=>b-a)[0] + 1 : 1) : null
       // })
@@ -211,43 +224,50 @@ export default {
       this.$emit('close', false)
     },
     showEdit(item) {
-      this.item = JSON.parse(JSON.stringify(item || this.createNewItem()))
+      this.item = item || this.createNewItem()
       this.dialog.showDetail = true
     },
-    showConfirm(item) {
-      this.item = JSON.parse(JSON.stringify(item))
-      this.dialog.showConfirm = true
-    },
+    // showConfirm(item) {
+    //   this.item = JSON.parse(JSON.stringify(item))
+    //   this.dialog.showConfirm = true
+    // },
     handleDelete(item) {
-      const path = item.path
-      const ordinal = item.ordinal
-      item.delete = true
-      let targetArr = [ item ]
-      for (const e of this.items) {
-        if (e.ordinal > ordinal) {
-          const moveUpItem = {}
-          for (const key in e) {
-            moveUpItem[key] = key == 'ordinal' ? (e.ordinal - 1) : e[key]
+      // this.item = JSON.parse(JSON.stringify(item))
+      this.$dialog.confirm({
+        text: `确定要删除${this.title}${item['name'] ? `：${item['name']}` : '' }？`
+      }).then(res => {
+        if (res) {
+          const path = item.path
+          const ordinal = item.ordinal
+          item.delete = true
+          let targetArr = [ item ]
+          for (const e of this.items) {
+            if (e.ordinal > ordinal) {
+              const moveUpItem = {}
+              for (const key in e) {
+                moveUpItem[key] = key == 'ordinal' ? (e.ordinal - 1) : e[key]
+              }
+              moveUpItem.sort = true
+              targetArr.push(moveUpItem)
+            }
           }
-          moveUpItem.sort = true
-          targetArr.push(moveUpItem)
+          
+          window.commonService.bulkSave(this.model, ...targetArr).then(()=>{
+            // this.dialog.showDetail = false
+            window.commonService.find(this.model, this.condition).then(data => {
+              this.items = data
+            })
+            this.$emit('change')
+            this.$toast.success(`${this.title}删除成功！`)
+          }).catch(err => {
+            console.error(err)
+            this.$toast.error(`${this.title}删除失败！`)
+          }).finally(() => {
+            this.interceptor.delete(path)
+            this.dialog.showConfirm = false
+            this.item = null
+          })
         }
-      }
-      
-      window.commonService.bulkSave(this.model, ...targetArr).then(()=>{
-        // this.dialog.showDetail = false
-        window.commonService.find(this.model, this.condition).then(data => {
-          this.items = data
-        })
-        this.$emit('change')
-        this.$toast.success(`${this.title}删除成功！`)
-      }).catch(err => {
-        console.error(err)
-        this.$toast.error(`${this.title}删除失败！`)
-      }).finally(() => {
-        this.interceptor.delete(path)
-        this.dialog.showConfirm = false
-        this.item = null
       })
     },
     handleSave(item) {

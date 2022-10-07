@@ -7,6 +7,40 @@ import { ValidationProvider, ValidationObserver } from "vee-validate"
 import VueIframe from 'vue-iframes'
 import Toast from "vue-toastification"
 import "vue-toastification/dist/index.css"
+import VuetifyDialog from 'vuetify-dialog'
+import 'vuetify-dialog/dist/vuetify-dialog.css'
+import UniqueId from 'vue-unique-id'
+
+Vue.use(VuetifyDialog, {
+  context: {
+    vuetify
+  },
+  warning: {
+    actions: {
+      false: '取消',
+      true: {
+        text: '确定',
+        flat: false,
+        color: 'primary'
+      }
+    },
+    title: '警告'
+  },
+  confirm: {
+    actions: {
+      false: '取消',
+      true: {
+        text: '确定',
+        flat: false,
+        color: 'primary'
+      }
+    },
+    title: '提示',
+    // icon: false, // to disable icon just put false
+  },
+})
+
+Vue.use(UniqueId)
 
 Vue.prototype.$forceCompute= function(computedName, forceUpdate /* default: true */) {
   const func = (vm) => {

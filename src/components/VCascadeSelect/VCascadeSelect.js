@@ -92,6 +92,7 @@ export default baseMixins.extend().extend({
     // multiple: Boolean,
     openOnClear: Boolean,
     returnObject: Boolean,
+    scrollOffset: [Number, String]
     // smallChips: Boolean,
   },
 
@@ -310,12 +311,13 @@ export default baseMixins.extend().extend({
   },
   methods: {
     listScroll(container, up) {
+      console.log(this.scrollOffset)
       const current = document.querySelector(container).scrollTop;
       const target = current + 48 + (up ? -48 * 3 : 48 * 3);
       goTo(target, {
         container: container,
         easing: "easeInOutCubic",
-        offset: -16,
+        offset: this.scrollOffset,
       });
     },
     listScrollUp(container) {
@@ -615,6 +617,7 @@ export default baseMixins.extend().extend({
           isMenuActive: this.isMenuActive,
           maxHeight: defaultMenuProps.maxHeight,
           defaultItemCount: defaultItemCount,
+          scrollOffset: this.scrollOffset
           // selectedItems: this.selectedItems,
         },
         class: {

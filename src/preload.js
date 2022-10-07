@@ -11,6 +11,9 @@ const channels = {
     'deleteFile',
     'previewPdf',
     'getAppVersion',
+    'minimize',
+    'maximize',
+    'close',
   ],
   m2r: [
     'fromMain',
@@ -18,6 +21,8 @@ const channels = {
     'readPlaceholderFromTemplate'
   ]
 }
+
+const listeners = {}
 contextBridge.exposeInMainWorld('ipc', {
   invoke: (channel, data) => {
     if (channels.r2m.includes(channel)) {
@@ -27,6 +32,7 @@ contextBridge.exposeInMainWorld('ipc', {
     }
   },
   send: (channel, data) => {
+    if (!data.uid) new Error('ipcRenderer.send: uid is required!')
     if (channels.r2m.includes(channel)) {
       ipcRenderer.send(channel, data)
     } else {
@@ -34,11 +40,16 @@ contextBridge.exposeInMainWorld('ipc', {
     }
   },
   receive: (channel, func) => {
-    if (channels.m2r.includes(channel)) {
-      ipcRenderer.on(channel, (event, ...args) => func(...args))
+    if (channels.m2r.includes(channel.split('-')[0])) {
+      listeners[channel] = (event, ...args) => func(...args)
+      ipcRenderer.on(channel, listeners[channel])
     } else {
       new Error(`invalid channel:${channel}`)
     }
+  },
+  removeListener: (channel) => {
+    ipcRenderer.removeListener(channel, listeners[channel])
+    delete listeners[channel]
   }
 })
 

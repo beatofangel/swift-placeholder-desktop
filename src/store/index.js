@@ -2,7 +2,7 @@ const Store = require('electron-store')
 
 const store = new Store()
 
-/* store.has("settings") ||  */store.set("settings", {})
+/* store.has("settings") ||  */// store.set("settings", {})
 
 export function saveSetting(setting) {
   store.set(`settings.${setting.id}.name`, setting.name)

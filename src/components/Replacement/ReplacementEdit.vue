@@ -1,17 +1,19 @@
 <template>
-  <v-card>
+  <v-card v-intersect="onIntersect">
     <v-row class="ma-0">
       <v-card class="col-6 pa-0 mb-1" elevation="0" tile>
         <v-row
+          key="loading"
           style="height: 100%"
           align="center"
-          v-if="templatePreviewLoading"
+          v-if="templatePreviewLoading || !present"
         >
           <v-col offset="4" cols="4">
             <v-img src="spinner.svg"></v-img>
           </v-col>
         </v-row>
         <iframe
+          key="iframe"
           v-else
           :src="templatePreviewUrl"
           width="100%"
@@ -28,7 +30,7 @@
             style="position: absolute; bottom: 30px; left: 0; width: 80%"
           >
             <draggable
-              v-model="placeholdersInTemplate"
+              v-model="placeholdersInTemplate2"
               :animation="200"
               :group="{ name: 'placeholder' }"
               :disabled="!showPlaceholderDetail"
@@ -43,8 +45,40 @@
               @start="onDrag"
               @end="onDrop"
             >
-              <!-- <transition-group type="transition" :name="!drag ? 'flip-chip' : null"> -->
-              <template v-for="{ text, unbound } in placeholdersInTemplate">
+              <template v-for="({ name, status }, index) in placeholdersInTemplate2">
+                <v-chip
+                  v-if="(
+                    status == 'new' ||
+                    status == 'saved' && (
+                      !showPlaceholderDetail ||
+                      (
+                        isEditPlaceholder ||
+                        (
+                          placeholderNewGroup.placeholders.findIndex(e=>e.name==name) == -1
+                        )
+                      )
+                    ) ||
+                    status == 'bound' && !showPlaceholderDetail
+                  )"
+                  class="ma-2"
+                  :class="{
+                    'chip-draggable': showPlaceholderDetail,
+                    'chip-regular': !showPlaceholderDetail,
+                  }"
+                  :disabled="status == 'bound'"
+                  :label="status == 'bound'"
+                  :color="`${status == 'bound' ? '' : 'warning'} lighten-1`"
+                  :outlined="
+                    status == 'bound' && !$vuetify.theme.dark
+                  "
+                  :key="index"
+                >
+                  <v-icon v-if="status == 'bound'">mdi-link-variant</v-icon>
+                  <v-icon v-else-if="status == 'saved'">mdi-content-save-outline</v-icon>
+                  {{ $formatPlaceholder(name) }}
+                </v-chip>
+              </template>
+              <!-- <template v-for="{ text, unbound, id } in placeholdersInTemplate">
                 <v-chip
                   v-if="
                     (showPlaceholderDetail && unbound) ||
@@ -64,10 +98,10 @@
                   :key="text"
                 >
                   <v-icon v-if="!unbound">mdi-link-variant</v-icon>
+                  <v-icon v-else-if="!!id">mdi-content-save-outline</v-icon>
                   {{ text }}
                 </v-chip>
-              </template>
-              <!-- </transition-group> -->
+              </template> -->
             </draggable>
           </v-card>
         </v-slide-y-reverse-transition>
@@ -97,7 +131,7 @@
             right
             fab
             :disabled="showPlaceholderDetail"
-            @click="showPlaceholderDetail = true"
+            @click="onCreatePlaceholderGroup"
           >
             <v-icon large>mdi-tag-plus</v-icon>
           </v-btn>
@@ -112,7 +146,7 @@
             right
             fab
             :disabled="showPlaceholderDetail"
-            @click="previewPdf(true)"
+            @click="()=>previewPdf(true)"
           >
             <v-icon large>{{
               templatePreviewLoading ? "mdi-loading mdi-spin" : "mdi-sync"
@@ -124,125 +158,15 @@
         <!-- <v-fade-transition :group="true" leave-absolute> -->
         <placeholder-detail
           v-if="showPlaceholderDetail"
+          :isEdit="isEditPlaceholder"
           :tplId="tplId"
           :placeholder="placeholderNewGroup"
-          :placeholdersInTemplate="placeholdersInTemplate"
+          :placeholdersInTemplate="placeholdersInTemplate2"
           @cancel="onCancel"
           @delete="onDelete"
           @save="onSave"
+          @clear="onClear"
         ></placeholder-detail>
-        <!-- <validation-observer ref="observer" v-slot="{ invalid }">
-          <v-form @submit.prevent="onSave">
-            <v-card v-if="showPlaceholderDetail" elevation="0" tile>
-              <v-data-table
-                key="placeholder"
-                fixed-header
-                height="calc(100vh - 700px)"
-                :items="placeholderNewGroup.items"
-                :headers="placeholderNewGroupHeaders"
-                hide-default-footer
-                disable-pagination
-                disable-sort
-              >
-                <template v-slot:top>
-                  <div class="ma-1">
-                    <validation-provider
-                      name="分组名称"
-                      :rules="rules.group"
-                      v-slot="{ errors }"
-                    >
-                      <v-text-field
-                        v-model="placeholderNewGroup.group"
-                        prepend-icon="mdi-tag-plus"
-                        placeholder="请输入分组名称"
-                        :error-messages="errors[0]"
-                      >
-                      </v-text-field>
-                    </validation-provider>
-                  </div>
-                </template>
-                <template v-slot:body="{ items }">
-                  <draggable
-                    v-model="placeholderNewGroup.items"
-                    group="placeholderTable"
-                    :disabled="newPlaceholders.length == 0"
-                    tag="tbody"
-                    @start="onDragRow"
-                    @end="onDropRow"
-                  >
-                    <tr v-for="(item, index) in items" :key="item.name">
-                      <td>
-                        {{ index + 1 }}
-                      </td>
-                      <td align="start">
-                        <v-chip>
-                          {{ formatPlaceholder(item) }}
-                        </v-chip>
-                      </td>
-                      <td>
-                        <v-select
-                          v-model="item.type"
-                          :items="placeholderTypeOptions"
-                          menu-props="offsetY"
-                          class="narrow-select"
-                          @change="onPlaceholderTypeChange($event, item)"
-                          hide-details
-                          dense
-                        ></v-select>
-                      </td>
-                      <td>
-                        <v-text-field
-                          v-model="item.format"
-                          prepend-icon="mdi-function"
-                          :disabled="['text', 'money'].includes(item.type)"
-                          hide-details
-                          dense
-                        ></v-text-field>
-                      </td>
-                      <td style="min-width: 60px">
-                        <v-icon
-                          @click="onDeletePlaceholder(item, index)"
-                          color="error"
-                          >mdi-delete</v-icon
-                        >
-                      </td>
-                    </tr>
-                  </draggable>
-                </template>
-                <template v-slot:footer>
-                  <v-card
-                    height="50px"
-                    outlined
-                    class="placeholder-drop-area ma-3"
-                    elevation="0"
-                  >
-                    <div
-                      class="d-flex justify-center align-center placeholder-drop-area-hint mt-2"
-                    >
-                      请从左侧拖拽<v-chip class="mt-n1" color="warning" small
-                        >占位符</v-chip
-                      >至虚线框以添加占位符
-                    </div>
-                    <draggable
-                      v-model="newPlaceholders"
-                      :group="{ name: 'placeholder' }"
-                      style="height: 100%; width: 100%"
-                      class="d-flex justify-center"
-                    >
-                    </draggable>
-                  </v-card>
-                </template>
-              </v-data-table>
-              <v-card-actions class="px-4">
-                <v-spacer></v-spacer>
-                <v-btn @click="onCancel" text>取消</v-btn>
-                <v-btn type="submit" color="primary" :disabled="invalid"
-                  >确定</v-btn
-                >
-              </v-card-actions>
-            </v-card>
-          </v-form>
-        </validation-observer> -->
         <!-- </v-fade-transition>
         <v-fade-transition :group="true" leave-absolute> -->
         <v-card v-if="!showPlaceholderDetail" elevation="0" tile>
@@ -335,8 +259,9 @@
             </template>
             <template v-slot:[`item.value`]="{ item }">
               <div class="d-flex justify-end">
-                <v-icon @click="onEditPlaceholder(item)" color="primary lighten-2">mdi-pencil</v-icon>
-                </div>
+                <v-icon @click="onEditPlaceholderGroup(item)" color="primary lighten-2">mdi-pencil</v-icon>
+                <v-icon @click="onDeletePlaceholderGroup(item)" color="error lighten-2">mdi-delete</v-icon>
+              </div>
             </template>
             <template v-slot:expanded-item="{ item }">
               <td colspan="3" class="px-0">
@@ -360,6 +285,7 @@
                     <template v-slot:[`item.group`]> &nbsp; </template>
                     <template v-slot:[`item.name`]="{ item }">
                       <v-chip
+                        :disabled="item.disable"
                         :color="
                           !!item.value
                             ? 'success lighten-1'
@@ -421,6 +347,11 @@
         </v-card>
         <!-- </v-fade-transition> -->
       </v-card>
+      <!-- <confirm-dialog
+        v-model="showDeleteConfirm"
+        message="确定要删除该占位符分组？"
+        @confirm="onDeletePlaceholderGroup(item)"
+      ></confirm-dialog> -->
     </v-row>
   </v-card>
 </template>
@@ -428,9 +359,9 @@
 <script>
 import moment from "moment";
 import draggable from "vuedraggable";
-// import { v4 as uuidv4 } from "uuid";
 import _ from "lodash";
 import PlaceholderDetail from "../Placeholder/PlaceholderDetail.vue"
+// import ConfirmDialog from '../Common/ConfirmDialog.vue';
 // import nzhcn from "nzh/cn";
 export default {
   props: {
@@ -439,98 +370,71 @@ export default {
   },
   components: {
     draggable,
-    PlaceholderDetail
+    PlaceholderDetail,
+    // ConfirmDialog
   },
   mounted() {
+    window.ipc.receive(`previewPdf-${this.uid}`, ({ id, data }) => {
+      if (this.tplId == id) {
+        // this.pdfPath = path
+        var blob = new Blob([data], { type: "application/pdf" });
+        this.pdfPath = URL.createObjectURL(blob);
+        this.templatePreviewLoading = false;
+      }
+    });
+    window.ipc.receive(`readPlaceholderFromTemplate-${this.uid}`, ({ id, ph }) => {
+      if (this.tplId == id) {
+        window.replaceService.checkPlaceholderExistanceByName2(ph.map(this.$parsePlaceholder), this.tplId).then(data => {
+          console.log(data)
+          this.placeholdersInTemplate2 = data
+        })
+
+        // this.placeholdersInTemplate = ph.map((e) => {
+        //   return {
+        //     text: e,
+        //     unbound:
+        //       this.placeholderGroups.findIndex(
+        //         (group) =>
+        //           group.placeholders.findIndex(
+        //             (placeholder) => this.$formatPlaceholder(placeholder) == e
+        //           ) != -1
+        //       ) == -1,
+        //   };
+        // });
+
+        // window.replaceService.checkPlaceholderExistanceByName(this.placeholdersInTemplate.filter(pit=>pit.unbound).map(pit=>{ return {name: this.$parsePlaceholder(pit.text), text: pit.text} })).then(data => {
+        //   data.forEach(existance => {
+        //     const pit = this.placeholdersInTemplate.find(p=>p.text==existance.text)
+        //     pit.id = existance.id
+        //     pit.type = existance.type
+        //     pit.format = existance.format
+        //   })
+        // })
+
+        // 右侧标签列表：禁用已包含在模板中的占位符
+        this.placeholderGroups.forEach((group) => {
+          group.placeholders.forEach((placeholder) => {
+            // 2-1. 存在于模板中：可填值
+            // 2-2. 不存在模板中：禁用
+            placeholder.disable = !ph.find(
+              (e) => this.$formatPlaceholder(placeholder) == e
+            );
+          });
+        });
+      }
+    });
     this.initTemplate()
-    // window.ipc.receive("previewPdf", ({ id, data }) => {
-    //   if (this.tplId == id) {
-    //     // this.pdfPath = path
-    //     var blob = new Blob([data], { type: "application/pdf" });
-    //     this.pdfPath = URL.createObjectURL(blob);
-    //     this.templatePreviewLoading = false;
-    //   }
-    // });
-    // window.ipc.receive("readPlaceholderFromTemplate", ({ id, ph }) => {
-    //   if (this.tplId == id) {
-    //     this.placeholdersInTemplate = ph.map((e) => {
-    //       return {
-    //         text: e,
-    //         unbound:
-    //           this.placeholderGroups.findIndex(
-    //             (group) =>
-    //               group.placeholders.findIndex(
-    //                 (placeholder) => this.$formatPlaceholder(placeholder) == e
-    //               ) != -1
-    //           ) == -1,
-    //       };
-    //     });
-    //     this.placeholderGroups.forEach((group) => {
-    //       group.placeholders.forEach((placeholder) => {
-    //         placeholder.disable = !ph.find(
-    //           (e) => this.$formatPlaceholder(placeholder) == e
-    //         );
-    //       });
-    //     });
-    //   }
-    // });
-    // window.replaceService
-    //   .findPlaceholderByTplId({ tplId: this.tplId })
-    //   .then((data) => {
-    //     this.placeholderGroups = data;
-    //     this.placeholderGroupsExpanded = this.placeholderGroups;
-    //   });
-    // this.previewPdf();
+  },
+  beforeDestroy() {
+    window.ipc.removeListener(`previewPdf-${this.uid}`)
+    console.log(`listener previewPdf-${this.uid} is removed.`)
+    window.ipc.removeListener(`readPlaceholderFromTemplate-${this.uid}`)
+    console.log(`listener readPlaceholderFromTemplate-${this.uid} is removed.`)
   },
   watch: {
     drag(val) {
       console.log("drag variable:", val);
     },
-    // newPlaceholders: {
-    //   deep: true,
-    //   handler(newVal, oldVal) {
-    //     console.log(newVal, oldVal);
-    //     if (newVal.length == 0) return;
-    //     if (newVal.length > oldVal.length) {
-    //       // add item
-    //       _.difference(newVal, oldVal).forEach((newGroup) => {
-    //         this.placeholderNewGroup.items.push({
-    //           id: uuidv4(),
-    //           name: this.parsePlaceholder(newGroup.text),
-    //           type: "text",
-    //           format: null,
-    //         });
-    //       });
-    //       // const newGroup = _.difference(newVal, oldVal)[0]
-    //       // // const newGroup = newVal[newVal.length-1]
-    //       // this.placeholderNewGroup.items.push({
-    //       //   id: uuidv4(),
-    //       //   name: this.parsePlaceholder(newGroup.text),
-    //       //   type: 'text',
-    //       //   format: null
-    //       // })
-    //     }
-    //     if (newVal.length < oldVal.length) {
-    //       // delete item
-    //       // nothing todo
-    //     }
-    //   },
-    // },
-    // tplId(val) {
-    //   window.replaceService
-    //     .listPlaceholderGroupByTemplateId(val)
-    //     .then((data) => {
-    //       this.placeholderGroups = data;
-    //       // expand all
-    //       this.placeholderGroupsExpanded = this.formData.placeholderGroups;
-    //     });
-    //   window.replaceService
-    //     .listPlaceholderByTemplateId(val)
-    //     .then((data) => {
-    //       this.placeholders = data;
-    //     });
-    //   this.previewPdf();
-    // }
     placeholdersInTemplate: {
       deep: true,
       handler(val) {
@@ -541,10 +445,20 @@ export default {
         }
       },
     },
+    placeholdersInTemplate2: {
+      deep: true,
+      handler(val) {
+        if (!val.find((e) => ['new', 'saved'].includes(e.status))) {
+          this.placeholdersInTemplateVisible = false;
+        } else {
+          this.placeholdersInTemplateVisible = true;
+        }
+      },
+    },
   },
   computed: {
     templatePreviewUrl() {
-      return this.pdfPath
+      return this.pdfPath && this.present
         ? `${this.pdfPath}#view=${this.pdfOptions.view}&toolbar=${this.pdfOptions.toolbar}`
         : "about:blank";
     },
@@ -558,45 +472,19 @@ export default {
     },
   },
   methods: {
-    initTemplate() {
-      window.ipc.receive("previewPdf", ({ id, data }) => {
-        if (this.tplId == id) {
-          // this.pdfPath = path
-          var blob = new Blob([data], { type: "application/pdf" });
-          this.pdfPath = URL.createObjectURL(blob);
-          this.templatePreviewLoading = false;
-        }
-      });
-      window.ipc.receive("readPlaceholderFromTemplate", ({ id, ph }) => {
-        if (this.tplId == id) {
-          this.placeholdersInTemplate = ph.map((e) => {
-            return {
-              text: e,
-              unbound:
-                this.placeholderGroups.findIndex(
-                  (group) =>
-                    group.placeholders.findIndex(
-                      (placeholder) => this.$formatPlaceholder(placeholder) == e
-                    ) != -1
-                ) == -1,
-            };
-          });
-          this.placeholderGroups.forEach((group) => {
-            group.placeholders.forEach((placeholder) => {
-              placeholder.disable = !ph.find(
-                (e) => this.$formatPlaceholder(placeholder) == e
-              );
-            });
-          });
-        }
-      });
+    onIntersect(entries) {
+      this.present = entries[0].isIntersecting
+    },
+    initPlaceholderStatus() {
+    },
+    initTemplate(preview = true) {
       window.replaceService
         .findPlaceholderByTplId({ tplId: this.tplId })
         .then((data) => {
           this.placeholderGroups = data;
           this.placeholderGroupsExpanded = this.placeholderGroups;
+          preview && this.previewPdf();
         });
-      this.previewPdf();
     },
     calcReplaceProgress(placeholders) {
       return (
@@ -612,7 +500,8 @@ export default {
     },
     previewPdf(replaceFlag) {
       this.templatePreviewLoading = true;
-      window.ipc.send("previewPdf", {
+      window.ipc.send('previewPdf', {
+        uid: this.uid,
         id: this.tplId,
         path: this.tplPath,
         data: replaceFlag ? this.placeholders : [],
@@ -649,68 +538,67 @@ export default {
     //   const option = this.placeholderTypeOptions.find((e) => e.value == item);
     //   option && (row.format = option.format);
     // },
-    onEditPlaceholder(item) {
+    onCreatePlaceholderGroup() {
+      this.isEditPlaceholder = false
       this.showPlaceholderDetail = true;
-      console.log(item)
+    },
+    onEditPlaceholderGroup(group) {
+      this.placeholderNewGroup.group = {
+        id: group.id,
+        name: group.name
+      }
+      this.placeholderNewGroup.placeholders = group.placeholders.slice()
+      this.isEditPlaceholder = true
+      this.showPlaceholderDetail = true;
+      console.log(group)
+    },
+    onDeletePlaceholderGroup(group) {
+      this.$dialog.confirm({ text: `确定要删除占位符分组：${group.name}？` }).then(res => {
+        console.log(res, group)
+        if (res) {
+          window.replaceService.savePlaceholderGroup({
+            // tplId: this.tplId,
+            id: group.id,
+            delete: true
+          }).then(() => {
+            this.$toast.success(`占位符分组删除成功！`);
+            this.initTemplate()
+          }).catch((err) => {
+            console.log(err);
+            this.$toast.error(`占位符分组删除失败！`);
+          });
+        }
+      })
     },
     onDelete(item) {
-      this.placeholdersInTemplate.push(item);
+      if (item) {
+        console.log("onDelete", item)
+        this.placeholdersInTemplate2.push(item);
+      }
+
+      // let preview = true
+      // if (this.isEditPlaceholder) {
+      //   preview = !item
+      // } else {
+      //   preview = false
+      // }
+      this.initTemplate()
     },
     onCancel(items) {
+      // this.placeholdersInTemplate.push(...items);
+      this.placeholdersInTemplate2.push(...items);
+      this.placeholderNewGroup.group = { id: null, name: null };
+      this.placeholderNewGroup.placeholders.splice(0);
       this.showPlaceholderDetail = false;
-      this.placeholdersInTemplate.push(...items);
-      this.placeholderNewGroup.group = null;
-      this.placeholderNewGroup.items.splice(0);
     },
     onSave() {
+      this.placeholderNewGroup.group = { id: null, name: null };
+      this.placeholderNewGroup.placeholders.splice(0);
       this.showPlaceholderDetail = false;
-      this.placeholderNewGroup.group = null;
-      this.placeholderNewGroup.items.splice(0);
       this.initTemplate()
-      // const items = [];
-      // this.placeholderNewGroup.items.forEach((ph, index) => {
-      //   items.push({
-      //     id: uuidv4(),
-      //     name: ph.name,
-      //     type: ph.type,
-      //     format: ph.format,
-      //     ordinal: index + 1,
-      //   });
-      // });
-      // window.commonService
-      //   .save("Placeholder", {
-      //     templateId: this.tplId,
-      //     groupId: uuidv4(),
-      //     groupName: this.placeholderNewGroup.group,
-      //     groupOrdinal: this.placeholderGroups.length + 1,
-      //     items: items,
-      //     insert: true,
-      //   })
-      //   .then(() => {
-      //     this.$toast.success(`${this.title}保存成功！`);
-      //     window.replaceService
-      //       .listPlaceholderGroupByTemplateId(this.tplId)
-      //       .then((data) => {
-      //         this.placeholderGroups = data;
-      //         // expand all
-      //         this.placeholderGroupsExpanded = this.placeholderGroups;
-      //       });
-      //     window.replaceService
-      //       .listPlaceholderByTemplateId(this.tplId)
-      //       .then((data) => {
-      //         this.placeholders = data;
-      //       });
-      //     this.previewPdf();
-      //     this.showPlaceholderDetail = false;
-      //     // reset
-      //     this.placeholderNewGroup.group = null;
-      //     this.placeholderNewGroup.items.splice(0);
-      //     this.newPlaceholders.splice(0);
-      //   })
-      //   .catch((err) => {
-      //     console.log(err);
-      //     this.$toast.error(`${this.title}保存失败！`);
-      //   });
+    },
+    onClear(items) {
+      this.placeholdersInTemplate2.push(...items);
     },
     changeDisplayMode(value) {
       console.log(value);
@@ -722,6 +610,7 @@ export default {
       placeholderGroupsExpanded: [],
       placeholders: [],
       placeholdersInTemplate: [],
+      placeholdersInTemplate2: [],
       placeholdersInTemplateVisible: true,
       templatePreviewLoading: false,
       pdfOptions: {
@@ -795,8 +684,11 @@ export default {
         },
       ],
       placeholderNewGroup: {
-        group: null,
-        items: [],
+        group: {
+          id: null,
+          name: null
+        },
+        placeholders: [],
       },
       newPlaceholders: [],
       placeholderTypeOptions: [
@@ -807,7 +699,10 @@ export default {
       rules: {
         group: { requiredInput: true },
       },
-      placeholderDisplayMode: 0, // 0：列表模式 1：问卷模式
+      placeholderDisplayMode: 0, // 0：列表模式 1：问卷模式,
+      isEditPlaceholder: false,
+      showDeleteConfirm: false,
+      present: false,
     };
   },
 };

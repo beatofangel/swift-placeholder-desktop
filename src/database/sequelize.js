@@ -42,6 +42,24 @@ const BusinessCategoryModel = sequelize.define('BusinessCategory', {
     allowNull: false,
     defaultValue: 0
   },
+}, {
+  hooks: {
+    // INSERT: 实现序号自增
+    beforeCreate: async (instance, options) => {
+      console.log('beforeCreate', options)
+      const cnt = await BusinessCategoryModel.count({
+        where: {
+          pid: instance.pid
+        }
+      })
+      instance.ordinal = cnt + 1
+      console.log(instance)
+    },
+    afterDestroy: async (instance, options) => {
+      // TODO 是否要实现自动序号递减？？
+      console.log('afterDestroy', options)
+    }
+  }
 })
 
 /** 模板Model */
@@ -183,23 +201,44 @@ const PhGrpItmRelModel = sequelize.define('PhGrpItmRel', {
 
 const SettingModel = sequelize.define('Setting', {
   id: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     primaryKey: true
   },
   name: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: false
   },
   description: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
   },
   type: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     defaultValue: 'BOOL',
     allowNull: false
   },
   value: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
+  }
+})
+
+const SessionModel = sequelize.define('Session', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  type: {
+    type: DataTypes.TEXT,
+    defaultValue: 'replace',
+    allowNull: false
+  },
+  status: {
+    type: DataTypes.TEXT,
+    defaultValue: 'processing',
+    allowNull: false
+  },
+  data: {
+    type: DataTypes.BLOB
   }
 })
 
@@ -250,7 +289,8 @@ const Models = {
   BcTplRelModel,
   TplPhGrpRelModel,
   PhGrpItmRelModel,
-  SettingModel
+  SettingModel,
+  SessionModel
 }
 
 // TODO 所有service请求都要修改
@@ -267,6 +307,7 @@ export function getModel(modelName) {
 export {
   sequelize,
   QueryTypes,
+  DataTypes,
   Op,
   Models
 }

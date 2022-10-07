@@ -1,8 +1,11 @@
 const SQL = require("../database/sql/sql.json");
-const { get, list, runInternal } = require("./baseService");
-const { v4: uuidv4 } = require("uuid");
-const moment = require("moment");
-const { sequelize, QueryTypes, Op, Models, beginTx } = require("../database/sequelize");
+const {
+  sequelize,
+  QueryTypes,
+  Op,
+  Models,
+  beginTx,
+} = require("../database/sequelize");
 const {
   BusinessCategoryModel,
   TemplateModel,
@@ -10,19 +13,20 @@ const {
   BcTplRelModel,
   PlaceholderGroupModel,
   PlaceholderItemModel,
-  PhGrpItmRelModel
+  PhGrpItmRelModel,
 } = Models;
 
+// TODO 排序功能可以批量update，应当通过单独的api调用 或者 改造现有api，累积后一次性更新
 // TODO 添加功能，根据级联业务类型选择器中选择的业务类型，查询所有子类型（含自身）所关联的模板（排除当前业务类型已经关联的模板），
 // 用于添加模板时，可以从现有模板中选择。 *原有功能为添加新模板
 
 /**
  * 级联查询业务分类
- * 
+ *
  * @returns 业务分类（级联）
  */
 export async function findBusinessCategoryCascaded() {
-  return await beginTx(async tx => {
+  return await beginTx(async (tx) => {
     return await BusinessCategoryModel.findAll({
       where: {
         [Op.and]: [
@@ -89,42 +93,40 @@ export async function findBusinessCategoryCascaded() {
  * @returns $root节点id
  */
 export async function findBusinessCategoryRoot() {
-  return await sequelize.transaction(tx => {
+  return await sequelize.transaction((tx) => {
     return BusinessCategoryModel.findOne({
       where: {
-        id: sequelize.col('pid')
+        id: sequelize.col("pid"),
       },
-      attributes: [ 'id' ],
-      raw: true
-    })
-  })
+      attributes: ["id"],
+      raw: true,
+    });
+  });
 }
 
 export async function findBusinessCategoryByPid({ pid }) {
-  return await sequelize.transaction(tx => {
+  return await sequelize.transaction((tx) => {
     return BusinessCategoryModel.findAll({
       where: {
         pid: pid,
         id: {
-          [Op.ne]: pid
-        }
+          [Op.ne]: pid,
+        },
       },
-      order: [
-        ['ordinal']
-      ],
-      raw: true
-    }).then(result => {
-      console.log(result)
-      return result
-    })
-  })
+      order: [["ordinal"]],
+      raw: true,
+    }).then((result) => {
+      console.log(result);
+      return result;
+    });
+  });
 }
 
 /**
  * 保存业务分类
- * 
- * @param {*} item 
- * @returns 
+ *
+ * @param {*} item
+ * @returns
  */
 export async function saveBusinessCategory(item) {
   return await bulkSaveBusinessCategory([item]);
@@ -132,12 +134,12 @@ export async function saveBusinessCategory(item) {
 
 /**
  * 批量保存业务分类
- * 
- * @param {*} items 
- * @returns 
+ *
+ * @param {*} items
+ * @returns
  */
 export async function bulkSaveBusinessCategory(items) {
-  return await beginTx(async tx => {
+  return await beginTx(async (tx) => {
     const model = BusinessCategoryModel;
     for (const item of items) {
       if (item.delete) {
@@ -146,8 +148,24 @@ export async function bulkSaveBusinessCategory(items) {
             id: item.id,
           },
         });
+      } else if (item.insert) {
+        await BusinessCategoryModel.create({
+          name: item.name,
+          icon: item.icon,
+          pid: item.pid,
+        });
+      } else if (item.sort) {
+        const businessCategory = await BusinessCategoryModel.findByPk(item.id);
+        await businessCategory.update({
+          ordinal: item.ordinal,
+        });
       } else {
-        await model.upsert(item);
+        const businessCategory = await BusinessCategoryModel.findByPk(item.id);
+        await businessCategory.update({
+          name: item.name,
+          icon: item.icon,
+        });
+        // await model.upsert(item);
       }
     }
   });
@@ -155,11 +173,11 @@ export async function bulkSaveBusinessCategory(items) {
 
 /**
  * 根据业务分类查询模板
- * @param { {String} } param0 
+ * @param { {String} } param0
  * @returns 业务分类列表
  */
 export async function findTemplateByBcId({ bcId }) {
-  return await beginTx(async tx => {
+  return await beginTx(async (tx) => {
     return await TemplateModel.findAll({
       attributes: ["id", "name", "path"],
       include: [
@@ -170,7 +188,7 @@ export async function findTemplateByBcId({ bcId }) {
           },
         },
       ],
-      order: [ [sequelize.col("BusinessCategories->BcTplRel.ordinal")], ],
+      order: [[sequelize.col("BusinessCategories->BcTplRel.ordinal")]],
       raw: true,
       nest: true,
     }).then((result) =>
@@ -180,7 +198,7 @@ export async function findTemplateByBcId({ bcId }) {
           name: item.name,
           path: item.path,
           ordinal: item.BusinessCategories.BcTplRel.ordinal,
-          bcId: item.BusinessCategories.id
+          bcId: item.BusinessCategories.id,
         };
       })
     );
@@ -189,9 +207,9 @@ export async function findTemplateByBcId({ bcId }) {
 
 /**
  * 保存模板
- * 
- * @param {*} item 
- * @returns 
+ *
+ * @param {*} item
+ * @returns
  */
 export async function saveTemplate(item) {
   return await bulkSaveTemplate([item]);
@@ -199,44 +217,48 @@ export async function saveTemplate(item) {
 
 /**
  * 批量保存模板
- * 
- * @param {[]} items 
- * @returns 
+ *
+ * @param {[]} items
+ * @returns
  */
 export async function bulkSaveTemplate(items) {
-  return await beginTx(async tx => {
+  return await beginTx(async (tx) => {
     for (const item of items) {
       const businessCategory = await BusinessCategoryModel.findByPk(item.bcId);
-      
-      if (item.delete) { // 删除
+
+      if (item.delete) {
+        // 删除
         await TemplateModel.destroy({
           where: {
             id: item.id,
           },
-        })
-      } else if (item.insert) { // 插入
+        });
+      } else if (item.insert) {
+        // 插入
         await businessCategory.addTemplates(
           await TemplateModel.create({ name: item.name, path: item.path }),
           {
             through: BcTplRelModel,
           }
         );
-      } else if (item.sort) { // 排序
+      } else if (item.sort) {
+        // 排序
         const bcTplRel = await BcTplRelModel.findOne({
           where: {
             bcId: item.bcId,
-            tplId: item.id
-          }
-        })
+            tplId: item.id,
+          },
+        });
         await bcTplRel.update({
-          ordinal: item.ordinal
-        })
-      } else { // 更新
-        const template = await TemplateModel.findByPk(item.id)
+          ordinal: item.ordinal,
+        });
+      } else {
+        // 更新
+        const template = await TemplateModel.findByPk(item.id);
         await template.update({
           name: item.name,
-          path: item.path
-        })
+          path: item.path,
+        });
       }
     }
   });
@@ -244,11 +266,11 @@ export async function bulkSaveTemplate(items) {
 
 /**
  * 根据模板查询占位符
- * @param { {String} } param0 
+ * @param { {String} } param0
  * @returns 业务分类列表
  */
- export async function findPlaceholderByTplId({ tplId }) {
-  return await beginTx(async tx => {
+export async function findPlaceholderByTplId({ tplId }) {
+  return await beginTx(async (tx) => {
     return await PlaceholderGroupModel.findAll({
       attributes: ["id", "name"],
       include: [
@@ -271,21 +293,103 @@ export async function bulkSaveTemplate(items) {
       // raw: true,
       // nest: true,
     }).then((result) =>
-      result.map(({ dataValues: group, PlaceholderItems: phItems, Templates: tpls }) => {
+      result.map(
+        ({ dataValues: group, PlaceholderItems: phItems, Templates: tpls }) => {
+          return {
+            id: group.id,
+            name: group.name,
+            ordinal: tpls[0].TplPhGrpRel.dataValues.ordinal,
+            placeholders: phItems.map(({ dataValues: item }) => {
+              return {
+                id: item.id,
+                name: item.name,
+                type: item.type,
+                format: item.format,
+                value: "",
+                ordinal: item.PhGrpItmRel.dataValues.ordinal,
+              };
+            }),
+          };
+        }
+      )
+    );
+  });
+}
+
+/**
+ * 查询所有不属于当前模板的占位符分组
+ *
+ * @param {*} param0
+ */
+export async function findPlaceholderByTplIdExcluded({ tplId }) {
+  return await beginTx(async (tx) => {
+    return await PlaceholderGroupModel.findAll({
+      attributes: ["id", "name"],
+      include: [
+        {
+          model: TemplateModel,
+          attributes: ["id", "name"],
+          where: {
+            id: {
+              [Op.ne]: tplId,
+            },
+          },
+        },
+        {
+          model: PlaceholderItemModel,
+        },
+      ],
+      order: [
+        [sequelize.col("Templates->TplPhGrpRel.ordinal")],
+        [sequelize.col("PlaceholderItems->PhGrpItmRel.ordinal")],
+      ],
+    }).then((result) =>
+      result.map(
+        ({ dataValues: group, Templates: tpls, PlaceholderItems: phItms }) => {
+          return {
+            id: group.id,
+            name: group.name,
+            templates: tpls.map(({ dataValues: tpl }) => {
+              return {
+                id: tpl.id,
+                name: tpl.name,
+              };
+            }),
+            placeholderItems: phItms.map(({ dataValues: phItm }) => {
+              return {
+                id: phItm.id,
+                name: phItm.name,
+                type: phItm.type,
+                format: phItm.format,
+                ordinal: phItm.PhGrpItmRel.dataValues.ordinal,
+              };
+            }),
+          };
+        }
+      )
+    );
+  });
+}
+
+export async function findPlaceholderItemByPhGrpId({ phGrpId }) {
+  return await beginTx(async (tx) => {
+    return await PlaceholderItemModel.findAll({
+      attributes: ["id", "name", "type", "format"],
+      include: {
+        model: PlaceholderGroupModel,
+        where: {
+          id: phGrpId,
+        },
+      },
+      order: [[sequelize.col("PlaceholderGroups->PhGrpItmRel.ordinal")]],
+    }).then((result) =>
+      result.map(({ dataValues: item, PlaceholderGroups: phGroups }) => {
         return {
-          id: group.id,
-          name: group.name,
-          ordinal: tpls[0].TplPhGrpRel.dataValues.ordinal,
-          placeholders: phItems.map(({ dataValues: item }) => {
-            return {
-              id: item.id,
-              name: item.name,
-              type: item.type,
-              format: item.format,
-              value: "",
-              ordinal: item.PhGrpItmRel.dataValues.ordinal
-            }
-          })
+          id: item.id,
+          name: item.name,
+          type: item.type,
+          format: item.format,
+          ordinal: phGroups[0].PhGrpItmRel.dataValues.ordinal,
         };
       })
     );
@@ -293,198 +397,395 @@ export async function bulkSaveTemplate(items) {
 }
 
 /**
- * 查询所有不属于当前模板的占位符分组
- * 
- * @param {*} param0 
- */
-export async function findPlaceholderByTplIdExcluded({ tplId }) {
-  return await beginTx(async tx => {
-    return await PlaceholderGroupModel.findAll({
-      attributes: ["id", "name"],
-      include: [
-        {
-          model: TemplateModel,
-          attributes: [ "id", "name" ],
-          where: {
-            id: {
-              [Op.ne]: tplId
-            }
-          }
-        },
-        {
-          model: PlaceholderItemModel,
-        }
-      ],
-      order: [
-        [sequelize.col("Templates->TplPhGrpRel.ordinal")],
-        [sequelize.col("PlaceholderItems->PhGrpItmRel.ordinal")],
-      ],
-    }).then(result => 
-      result.map(({ dataValues: group, Templates: tpls, PlaceholderItems: phItms }) => {
-        return {
-          id: group.id,
-          name: group.name,
-          templates: tpls.map(({ dataValues: tpl })=>{
-            return {
-              id: tpl.id,
-              name: tpl.name
-            }
-          }),
-          placeholderItems: phItms.map(({ dataValues: phItm }) => {
-            return {
-              id: phItm.id,
-              name: phItm.name,
-              type: phItm.type,
-              format: phItm.format,
-              ordinal: phItm.PhGrpItmRel.dataValues.ordinal
-            }
-          })
-        }
-      })
-    )
-  })
-}
-
-
-/**
  * 保存占位符分组
- * 
- * @param {*} item 
- * @returns 
+ *
+ * @param {*} item
+ * @returns
  */
- export async function savePlaceholderGroup(item) {
+export async function savePlaceholderGroup(item) {
   return await bulkSavePlaceholderGroup([item]);
 }
 
-
 /**
  * 批量保存占位符分组 TODO 待测试，模板编辑也需要考虑复杂情况
- * 
- * @param {[]} items 
- * @returns 
+ *
+ * @param {[{ id: String?, name: String, delete: Boolean?, insert: Boolean?, sort: Boolean?, bind: Boolean? PlaceholderItems:[{ name: String, type: String, format: String?, delete: Boolean?, insert: Boolean?, sort: Boolean?, bind: Boolean? }] }]} items
+ * @returns
  */
- export async function bulkSavePlaceholderGroup(items) {
-  return await beginTx(async tx => {
+export async function bulkSavePlaceholderGroup(items) {
+  return await beginTx(async (tx) => {
     for (const item of items) {
-      const template = await TemplateModel.findByPk(item.tplId)
       if (item.delete) {
-        // TODO 是否会残留未与分组绑定的占位符？
+        // TODO 是否会残留未与分组绑定的占位符？ 是
+        const group = await PlaceholderGroupModel.findOne({
+          where: {
+            id: item.id,
+          },
+          include: {
+            model: PlaceholderItemModel,
+            include: {
+              model: PlaceholderGroupModel,
+              attributes: ["id"],
+              // where: {
+              //   id: {
+              //     [Op.ne]: item.id
+              //   }
+              // }
+            },
+          },
+        });
         await PlaceholderGroupModel.destroy({
           where: {
             id: item.id,
           },
-        })
+        });
+        for (const item of group.PlaceholderItems) {
+          if (item.PlaceholderGroups.length == 1) {
+            // 当前分组所关联的项目未被其他分组使用，可以删除
+            await PlaceholderItemModel.destroy({
+              where: {
+                id: item.id,
+              },
+            });
+          }
+        }
+
+        // if (group.PlaceholderItems.length == 1) { // 当前分组所关联的项目未被其他分组使用，可以删除
+        //   console.log(group)
+        //   await PlaceholderItemModel.destroy({
+        //     where: {
+        //       id: group.PlaceholderItems[0].id
+        //     }
+        //   })
+        // }
       } else if (item.insert) {
+        const template = await TemplateModel.findByPk(item.tplId);
         const placeholderGroup = await PlaceholderGroupModel.create({
           name: item.name,
-        })
-        await template.addPlaceholderGroups(
-          placeholderGroup, {
-            through: TplPhGrpRelModel
-          }
-        )
+        });
+        await template.addPlaceholderGroups(placeholderGroup, {
+          through: TplPhGrpRelModel,
+        });
 
         for (const phItem of item.placeholderItems) {
           if (phItem.delete) {
             // dead code
-            await PlaceholderItemModel.destroy({
-              where: {
-                id: phItem.id,
-              },
-            })
+            new Error("group:insert->item:delete not implemented")
+            // await PlaceholderItemModel.destroy({
+            //   where: {
+            //     id: phItem.id,
+            //   },
+            // })
           } else if (phItem.insert) {
             await placeholderGroup.addPlaceholderItems(
               await PlaceholderItemModel.create({
                 name: phItem.name,
                 type: phItem.type,
-                format: phItem.format
-              }), {
-                through: PhGrpItmRelModel
+                format: phItem.format,
+              }),
+              {
+                through: PhGrpItmRelModel,
               }
-            )
+            );
           } else if (phItem.sort) {
             // dead code
-            const phGrpItmRel = await PhGrpItmRelModel.findOne({
-              where: {
-                phGrpId: phItem.phGrpId,
-                phItmId: phItem.id
-              }
-            })
-            await phGrpItmRel.update({
-              ordinal: phItem.ordinal
-            })
+            new Error("group:insert->item:sort not implemented")
+            // const phGrpItmRel = await PhGrpItmRelModel.findOne({
+            //   where: {
+            //     phGrpId: phItem.phGrpId,
+            //     phItmId: phItem.id
+            //   }
+            // })
+            // await phGrpItmRel.update({
+            //   ordinal: phItem.ordinal
+            // })
+          } else if (phItem.bind) {
+            const placeholderItem = await PlaceholderItemModel.findByPk(
+              phItem.id
+            );
+            await placeholderGroup.addPlaceholderItems(placeholderItem, {
+              through: PhGrpItmRelModel,
+            });
           } else {
             // dead code
-            const placeholderItem = await PlaceholderItemModel.findByPk(itphItemem.id)
-            await placeholderItem.update({
-              name: phItem.name,
-              type: phItem.type,
-              format: phItem.format
-            })
+            new Error("group:insert->item:update not implemented")
+            // const placeholderItem = await PlaceholderItemModel.findByPk(phItem.id)
+            // await placeholderItem.update({
+            //   name: phItem.name,
+            //   type: phItem.type,
+            //   format: phItem.format
+            // })
           }
         }
       } else if (item.sort) {
+        // 占位符分组排序功能由另外的api单独提供
         const tplPhGrpRel = await TplPhGrpRelModel.findOne({
           where: {
             tplId: item.tplId,
-            phGrpId: item.id
-          }
-        })
+            phGrpId: item.id,
+          },
+        });
         await tplPhGrpRel.update({
-          ordinal: item.ordinal
-        })
-      } else {
-        const placeholderGroup = await PlaceholderGroupModel.findByPk(item.id)
-        await placeholderGroup.update({
-          name: item.name,
-        })
-        
+          ordinal: item.ordinal,
+        });
+      } else if (item.bind) {
+        const template = await TemplateModel.findByPk(item.tplId);
+        const placeholderGroup = await PlaceholderGroupModel.findByPk(item.id);
+        await template.addPlaceholderGroups(placeholderGroup, {
+          through: TplPhGrpRelModel,
+        });
         for (const phItem of item.placeholderItems) {
           if (phItem.delete) {
-            await PlaceholderItemModel.destroy({
-              where: {
-                id: phItem.id,
-              },
-            })
+            // dead code
+            new Error("group:bind->item:delete not implemented")
+            // await PlaceholderItemModel.destroy({
+            //   where: {
+            //     id: phItem.id,
+            //   },
+            // })
           } else if (phItem.insert) {
             await placeholderGroup.addPlaceholderItems(
               await PlaceholderItemModel.create({
                 name: phItem.name,
                 type: phItem.type,
-                format: phItem.format
-              }), {
-                through: PhGrpItmRelModel
+                format: phItem.format,
+              }),
+              {
+                through: PhGrpItmRelModel,
               }
-            )
+            );
           } else if (phItem.sort) {
-            const phGrpItmRel = await PhGrpItmRelModel.findOne({
-              where: {
-                phGrpId: phItem.phGrpId,
-                phItmId: phItem.id
-              }
-            })
-            await phGrpItmRel.update({
-              ordinal: phItem.ordinal
-            })
+            // dead code
+            new Error("group:bind->item:sort not implemented")
+            // const phGrpItmRel = await PhGrpItmRelModel.findOne({
+            //   where: {
+            //     phGrpId: phItem.phGrpId,
+            //     phItmId: phItem.id
+            //   }
+            // })
+            // await phGrpItmRel.update({
+            //   ordinal: phItem.ordinal
+            // })
+          } else if (phItem.bind) {
+            const placeholderItem = await PlaceholderItemModel.findByPk(
+              phItem.id
+            );
+            await placeholderGroup.addPlaceholderItems(placeholderItem, {
+              through: PhGrpItmRelModel,
+            });
           } else {
-            const placeholderItem = await PlaceholderItemModel.findByPk(itphItemem.id)
-            await placeholderItem.update({
-              name: phItem.name,
-              type: phItem.type,
-              format: phItem.format
-            })
+            // dead code
+            new Error("group:bind->item:update not implemented")
+            // const placeholderItem = await PlaceholderItemModel.findByPk(phItem.id)
+            // await placeholderItem.update({
+            //   name: phItem.name,
+            //   type: phItem.type,
+            //   format: phItem.format
+            // })
+          }
+        }
+      } else {
+        const placeholderGroup = await PlaceholderGroupModel.findByPk(item.id);
+        await placeholderGroup.update({
+          name: item.name,
+        });
+
+        for (const phItem of item.placeholderItems) {
+          if (phItem.delete) {
+            // dead code 删除由单独的api来实现
+            new Error("group:update->item:delete not implemented")
+            // await PlaceholderItemModel.destroy({
+            //   where: {
+            //     id: phItem.id,
+            //   },
+            // })
+          } else if (phItem.insert) {
+            await placeholderGroup.addPlaceholderItems(
+              await PlaceholderItemModel.create({
+                name: phItem.name,
+                type: phItem.type,
+                format: phItem.format,
+              }),
+              {
+                through: PhGrpItmRelModel,
+              }
+            );
+          } else if (phItem.sort) {
+            // dead code 排序由单独的api来实现
+            new Error("group:update->item:sort not implemented")
+            // const phGrpItmRel = await PhGrpItmRelModel.findOne({
+            //   where: {
+            //     phGrpId: phItem.phGrpId,
+            //     phItmId: phItem.id
+            //   }
+            // })
+            // await phGrpItmRel.update({
+            //   ordinal: phItem.ordinal
+            // })
+          } else if (phItem.bind) {
+            const placeholderItem = await PlaceholderItemModel.findByPk(
+              phItem.id
+            );
+            await placeholderGroup.addPlaceholderItems(placeholderItem, {
+              through: PhGrpItmRelModel,
+            });
+          } else {
+            // dead code TODO 暂不允许修改（修改占位符有可能会影响到本次替换中其他模板已使用的占位符）
+            // TODO 
+            new Error("group:update->item:update not implemented")
+            // const placeholderItem = await PlaceholderItemModel.findByPk(phItem.id)
+            // await placeholderItem.update({
+            //   name: phItem.name,
+            //   type: phItem.type,
+            //   format: phItem.format
+            // })
           }
         }
       }
     }
-  })
+  });
 }
 
-// export async function bulkSavePlaceholderItem({ items }) {
-//   return await beginTx(async tx => {
-//     const 
-//   })
-// }
+export async function checkPlaceholderExistanceByName(items) {
+  return await beginTx(async (tx) => {
+    const result = [];
+    for (const item of items) {
+      const placeholderItem = await PlaceholderItemModel.findOne({
+        where: {
+          name: item.name,
+        },
+        include: {
+          model: PlaceholderGroupModel,
+          include: {
+            model: TemplateModel,
+            where: {
+              id: item.tplId
+            }
+          }
+        }
+      });
+      if (placeholderItem) {
+        result.push({
+          id: placeholderItem.id,
+          text: item.text,
+          type: placeholderItem.type,
+          format: placeholderItem.format,
+          status: placeholderItem.PlaceholderGroups.length == 0 ? 'saved' : 'bound'
+        });
+      }
+    }
+
+    return result;
+  });
+}
+
+export async function checkPlaceholderExistanceByName2(items, tplId) {
+  return await beginTx(async (tx) => {
+    const placeholderItems = await PlaceholderItemModel.findAll({
+      where: {
+        name: {
+          [Op.in]: items
+        }
+      },
+      include: {
+        model: PlaceholderGroupModel,
+        include: {
+          model: TemplateModel,
+          where: {
+            id: tplId
+          }
+        }
+      }
+    })
+    return items.map(item => {
+      const matched = placeholderItems.find(placeholderItem=>placeholderItem.name==item)
+      return matched ? {
+        id: matched.id,
+        name: matched.name,
+        type: matched.type,
+        format: matched.format,
+        status: matched.PlaceholderGroups.length == 0 ? 'saved' : 'bound'
+      } : {
+        id: null,
+        name: item,
+        type: 'text',
+        format: '',
+        status: 'new'
+      }
+    })
+  });
+}
+
+export async function savePlaceholderItem(item) {
+  return await bulkSavePlaceholderItem([item]);
+}
+
+/**
+ *
+ * @param {[{ id: String?, name: String, type: String, format: String?, phGrpId: String, ordinal: Number }]} items
+ * @returns
+ */
+export async function bulkSavePlaceholderItem(items) {
+  return await beginTx(async (tx) => {
+    for (const item of items) {
+      if (item.delete) {
+        const placeholderItem = await PlaceholderItemModel.findByPk(item.id, {
+          // where: {
+          //   id: item.id
+          // },
+          include: {
+            model: PlaceholderGroupModel,
+          },
+        });
+
+        // 若占位符关联多个分组，则 解除当前分组与占位符的关联
+        if (placeholderItem.PlaceholderGroups.length > 1) {
+          await PhGrpItmRelModel.destroy({
+            where: {
+              phGrpId: item.phGrpId,
+              phItmId: item.id,
+            },
+          });
+        } else {
+          // 否则 删除此占位符（并解除与分组的关联）
+          await PlaceholderItemModel.destroy({
+            where: {
+              id: item.id,
+            },
+            include: {
+              model: PlaceholderGroupModel,
+              where: {
+                id: item.phGrpId
+              }
+            }
+          });
+        }
+        // 重新排序当前分组下序号大于item.ordinal
+        await PhGrpItmRelModel.update(
+          {
+            ordinal: sequelize.literal("ordinal - 1"),
+          },
+          {
+            where: {
+              phGrpId: item.phGrpId,
+              ordinal: {
+                [Op.gt]: item.ordinal,
+              },
+            },
+          }
+        );
+      } else if (item.insert) {
+        // 通过bulkSavePlaceholderGroup实现
+        new Error("item:insert not implemented")
+      } else if (item.sort) {
+        new Error("item:sort not implemented")
+      } else {
+        // 通过bulkSavePlaceholderGroup实现
+        new Error("item:update not implemented")
+      }
+    }
+  });
+}
 
 // 新增分组： 模板关系（自动） <- 占位符分组 + 占位符(*1) -> 占位符关系（自动）
 // 修改分组： 占位符分组 + 占位符(*1) -> 占位符关系（自动）
@@ -498,34 +799,33 @@ export async function findPlaceholderByTplIdExcluded({ tplId }) {
  * 新增占位符分组（TODO 可以选择已经存在的占位符分组，是否根据模板中读取的占位符列表来筛选占位符分组？？）：
  *     1. 插入占位符分组表（optional）
  *     2. 插入模板占位符分组关系表
- *     3. 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
- * 
+ *     3.
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
+ *
  */
-
 
 // /**
 //  * 保存模板
-//  * 
-//  * @param {*} item 
-//  * @returns 
+//  *
+//  * @param {*} item
+//  * @returns
 //  */
 // export async function saveTemplate(item) {
 //   return await bulkSaveTemplate([item]);
@@ -533,15 +833,15 @@ export async function findPlaceholderByTplIdExcluded({ tplId }) {
 
 // /**
 //  * 批量保存模板
-//  * 
-//  * @param {[]} items 
-//  * @returns 
+//  *
+//  * @param {[]} items
+//  * @returns
 //  */
 // export async function bulkSaveTemplate(items) {
 //   return await beginTx(async tx => {
 //     for (const item of items) {
 //       const businessCategory = await BusinessCategoryModel.findByPk(item.bcId);
-      
+
 //       if (item.delete) { // 删除
 //         await TemplateModel.destroy({
 //           where: {
@@ -576,7 +876,6 @@ export async function findPlaceholderByTplIdExcluded({ tplId }) {
 //   });
 // }
 
-
 // TODO 是否还需要？
 export async function findOwnerlessTemplate() {
   return await sequelize.transaction((tx) => {
@@ -586,256 +885,3 @@ export async function findOwnerlessTemplate() {
     });
   });
 }
-
-//-------------------------------------------------------------------------
-
-export function listBusinessCategoryAll() {
-  return list(SQL.listBusinessCategoryAllSql, (result) =>
-    result.map((e) => {
-      return {
-        id: e.ID,
-        name: e.NAME,
-        icon: e.ICON || "",
-        sort: e.SORT,
-      };
-    })
-  );
-}
-
-export function getBusinessCategoryOptions() {
-  return list(SQL.listBusinessCategoryAllSql, (result) =>
-    result.map((e) => {
-      return {
-        value: e.ID,
-        text: e.NAME,
-        icon: e.ICON || "",
-        index: e.SORT,
-      };
-    })
-  );
-}
-
-export function listPlaceholderByTemplateId(templateId) {
-  return list(
-    SQL.listPlaceholderByTemplateIdSql,
-    {
-      "@templateId": templateId,
-    },
-    (result) =>
-      result.map((e) => {
-        return {
-          groupId: e.PGID,
-          group: e.PGNAME,
-          id: e.PHID,
-          name: e.PHNAME,
-          type: e.PHTYPE,
-          format: e.PHFORMAT,
-          count: 0,
-          value: "",
-        };
-      })
-  );
-}
-
-export function listPlaceholderGroupByTemplateId(templateId) {
-  return list(
-    SQL.listPlaceholderGroupByTemplateIdSql,
-    {
-      "@templateId": templateId,
-    },
-    (result) =>
-      result.map((e) => {
-        return {
-          id: e.ID,
-          name: e.NAME,
-          value: null,
-        };
-      })
-  );
-}
-
-export function listTemplateByBusinessCategoryId(businessCategoryId) {
-  return list(
-    SQL.listTemplateByBusinessCategoryIdSql,
-    {
-      "@businessCategoryId": businessCategoryId,
-    },
-    (result) =>
-      result.map((e) => {
-        return {
-          id: e.ID,
-          name: e.NAME,
-          path: e.PATH,
-        };
-      })
-  );
-}
-
-export function listOwnerlessTemplate() {
-  return list(SQL.listOwnerlessTemplateSql, (result) =>
-    result.map((e) => {
-      return {
-        value: e.ID,
-        text: e.NAME,
-        path: e.PATH,
-      };
-    })
-  );
-}
-
-export async function saveTemplate2(item) {
-  return await runInternal(async (db) => {
-    if (item.insert) {
-      const rst1 = await db.run(SQL.saveTemplateSql, {
-        "@id": item.id,
-        "@name": item.name,
-        "@path": item.path,
-        "@lastchange": moment().format("YYYY-MM-DD HH:mm:ss"),
-      });
-      console.log("TEMPLATE inserted.");
-      const rst2 = await db.run(SQL.insertBcTplRelSql, {
-        "@id": uuidv4(),
-        "@bcid": item.bcid,
-        "@tplid": item.id,
-      });
-      console.log("BC_TPL_REL inserted.");
-    } else if (item.delete) {
-      const rst1 = await db.run(SQL.deleteBcTplRelByTemplateIdSql, {
-        "@templateId": item.id,
-      });
-      console.log("BC_TPL_REL deleted.");
-      const rst2 = await db.run(SQL.deleteTplPhgrpRelByTemplateIdSql, {
-        "@templateId": item.id,
-      });
-      console.log("TPL_PHGRP_REL deleted.");
-      const rst3 = await db.run(SQL.deleteTemplateSql, {
-        "@id": item.id,
-      });
-      console.log("TEMPLATE deleted.");
-    } else {
-      // default: update
-      const rst = await db.run(SQL.saveTemplateSql, {
-        "@id": item.id,
-        "@name": item.name,
-        "@path": item.path,
-        "@lastchange": moment().format("YYYY-MM-DD HH:mm:ss"),
-      });
-      console.log("TEMPLATE updated.");
-    }
-  });
-}
-
-export async function insertTemplate(item) {
-  return await runInternal(async (db) => {
-    const rst = await db.run(SQL.insertTemplateSql, {
-      "@id": item.id,
-      "@name": item.name,
-      "@path": item.path,
-      "@lastchange": moment().format("YYYY-MM-DD HH:mm:ss"),
-    });
-    console.log(rst);
-  });
-}
-
-export async function updateTemplate(item) {
-  return await runInternal(async (db) => {
-    const rst = await db.run(SQL.updateTemplateSql, {
-      "@id": item.id,
-      "@name": item.name,
-      "@path": item.path,
-      "@lastchange": moment().format("YYYY-MM-DD HH:mm:ss"),
-    });
-    console.log(rst);
-  });
-}
-
-export async function savePlaceholder(item) {
-  return await runInternal(async (db) => {
-    if (item.insert) {
-      const rst1 = await db.run(SQL.savePlaceholderGroupSql, {
-        "@id": item.groupId,
-        "@name": item.groupName,
-      });
-      console.log(rst1);
-      await item.items.forEach(async (ph) => {
-        const rst2 = await db.run(SQL.savePlaceholderItemSql, {
-          "@id": ph.id,
-          "@name": ph.name,
-          "@type": ph.type,
-          "@format": ph.format,
-        });
-        console.log(rst2);
-        const rst3 = await db.run(SQL.insertPhGroupItemRelSql, {
-          "@id": uuidv4(),
-          "@phGrpId": item.groupId,
-          "@phId": ph.id,
-          "@sort": ph.sort,
-        });
-        console.log(rst3);
-      });
-      const rst4 = await db.run(SQL.insertTplPhgrpRelSql, {
-        "@id": uuidv4(),
-        "@tplId": item.templateId,
-        "@phGrpId": item.groupId,
-        "@sort": item.groupSort,
-      });
-      console.log(rst4);
-    }
-  });
-}
-
-// async function get(sql, params, func) {
-//   return openDb().then(db => {
-//     return db.get(sql, params).then(func).finally(() => {
-//       db.close()
-//     })
-//   })
-// }
-
-// async function list(sql, params, func) {
-//   let _func
-//   let _params
-//   if (func) {
-//     _func = func
-//     _params = params
-//   } else {
-//     if (typeof params == 'function') {
-//       _func = params
-//     } else {
-//       new Error('invalid argument')
-//     }
-//   }
-//   return openDb().then(db => {
-//     return db.all(sql, _params).then(_func).finally(() => {
-//       db.close()
-//     })
-//   })
-// }
-
-// async function runInternal(func) {
-//   return openDb().then(async db => {
-//     let result
-//     try {
-//       await db.run('BEGIN TRANSACTION')
-//       const rst = await func(db)
-//       console.log(rst)
-//       await db.run('COMMIT TRANSACTION')
-//       result = {
-//         success: true
-//       }
-//     } catch (error) {
-//       console.error(error)
-//       await db.run('ROLLBACK TRANSACTION')
-//       result = {
-//         success: false,
-//         error: error
-//       }
-//     }
-//     return result
-//   }).catch(error => {
-//     return {
-//       success: false,
-//       error: error
-//     }
-//   })
-// }

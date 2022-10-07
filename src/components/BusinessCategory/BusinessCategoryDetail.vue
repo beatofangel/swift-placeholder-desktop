@@ -215,7 +215,8 @@ export default {
         name: this.formData.name,
         icon: `mdi-${this.formData.icon}`,
         ordinal: this.formData.ordinal,
-        templates: this.templates
+        templates: this.templates,
+        insert: !this.isEdit,
       })
     },
     toggle() {

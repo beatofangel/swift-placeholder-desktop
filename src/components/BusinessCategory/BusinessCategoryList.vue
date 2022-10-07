@@ -76,10 +76,6 @@ import BusinessCategoryDetail from "@/components/BusinessCategory/BusinessCatego
 export default {
   name: "business-category-list",
   props: {
-    businessCategories: {
-      type: Array,
-      default: () => [],
-    },
     visible: Boolean,
   },
   mounted() {
