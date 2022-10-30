@@ -16,6 +16,16 @@ module.exports = {
             from: "./database/",
             to: "database",
             filter: [ "userdata.db" ]
+          },
+          {
+            from: "./instdir/",
+            to: "instdir",
+            filter: [ "**/*" ]
+          },
+          {
+            from: "./replaceApp/",
+            to: "replaceApp",
+            filter: [ "**/*" ]
           }
         ]
       }

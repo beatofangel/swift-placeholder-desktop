@@ -323,7 +323,7 @@ ipcMain.handle('createSession', async (event, { id: sessionId }) => {
 // })
 
 function previewPdfCmd(outputDir, pathFile) {
-  const soffice = Path.resolve("C:/Users/EricW/Documents/WORKSPACE/VSCODE/swift-placeholder-desktop", 'instdir', 'program', 'soffice.exe')
+  const soffice = Path.resolve('instdir', 'program', 'soffice.exe')
   // return `${soffice} --headless --norestore --invisible --nodefault --nofirststartwizard --nolockcheck --nologo --convert-to pdf --outdir ${outputDir} "${pathFile}"`;
   return {
     convertCmd: soffice,
@@ -345,7 +345,7 @@ function previewPdfCmd(outputDir, pathFile) {
 }
 
 function doReplaceCmd(sourceDoc, outputDoc, args) {
-  const replaceApp = Path.resolve("C:/Users/EricW/Documents/WORKSPACE/VSCODE/swift-placeholder-desktop", "replaceApp", "replaceApp.exe")
+  const replaceApp = Path.resolve("replaceApp", "replaceApp.exe")
   // return `${replaceApp} -s "${sourceDoc}" -o "${outputDoc}" ${args}`
   return {
     replaceCmd: replaceApp, 
