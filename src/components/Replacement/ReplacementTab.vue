@@ -4,7 +4,6 @@
       <v-col>
         <validation-observer
           ref="observer"
-          v-slot="{ invalid }"
         >
           <v-form ref="form" @submit.prevent="onSubmit">
             <v-card height="calc(100vh - 124px)">
@@ -17,7 +16,7 @@
                       v-slot="{ errors }"
                     >
                       <v-cascade-select
-                        v-model="formData.businessCategory"
+                        v-model="session.businessCategory"
                         :items="businessCategoryOptions"
                         label="业务类型"
                         placeholder="请选择业务类型"
@@ -40,7 +39,7 @@
                     </validation-provider>
                   </v-col>
                 </v-row>
-                <v-row>
+                <!-- <v-row>
                   <v-col>
                     <validation-provider
                       name="输出文件夹"
@@ -62,7 +61,7 @@
                       </v-text-field>
                     </validation-provider>
                   </v-col>
-                </v-row>
+                </v-row> -->
                 <v-row>
                   <v-col>
                     <v-card>
@@ -76,24 +75,24 @@
                           ref="templateTabs"
                           align-with-title
                         >
-                          <v-tabs-slider :key="formData.templates[tab] == null ? 'not_found' : formData.templates[tab].id"></v-tabs-slider>
+                          <v-tabs-slider :key="session.templates[tab] == null ? 'not_found' : session.templates[tab].id"></v-tabs-slider>
                           <v-tab
-                            v-for="{ id, name } in formData.templates"
+                            v-for="{ id, name } in session.templates"
                             :key="id"
                           >
                             <span class="text-h6">{{ name }}</span>
                           </v-tab>
-                          <v-hover v-slot="{ hover }" v-if="formData.businessCategory && formData.templates.length == 0 && isAdminMode">
+                          <v-hover v-slot="{ hover }" v-if="session.businessCategory && session.templates.length == 0 && isAdminMode">
                             <v-btn @click="showTemplateDialog" height="100%" color="transparent" depressed tile>
                               <v-icon :class="{ 'rotate-transition-180': hover }" color="success">mdi-plus</v-icon><span class="text-h6">添加模板</span>
                             </v-btn>
                           </v-hover>
-                          <v-hover v-slot="{ hover }" v-if="formData.businessCategory && formData.templates.length > 0 && isAdminMode">
+                          <v-hover v-slot="{ hover }" v-if="session.businessCategory && session.templates.length > 0 && isAdminMode">
                             <v-btn @click="showTemplateListDialog" height="100%" color="transparent" depressed tile>
                               <v-icon :class="{ 'rotate-transition-120': hover }">mdi-cog</v-icon>
                             </v-btn>
                           </v-hover>
-                          <v-banner v-if="!formData.businessCategory">
+                          <v-banner v-if="!session.businessCategory">
                             <v-icon class="mt-n1 mr-1" color="warning">mdi-alert</v-icon>
                             <span class="text-h6">未选择业务类型</span>
                           </v-banner>
@@ -101,12 +100,15 @@
                       </v-toolbar>
                       <v-tabs-items v-model="tab">
                         <v-tab-item
-                          v-for="{ id, path } in formData.templates"
+                          v-for="{ id, path } in session.templates"
                           :key="id"
                         >
                           <replacement-edit
+                            :session="session"
                             :tplId="id"
                             :tplPath="path"
+                            @input:template-path="onTemplatePathChange"
+                            @input:placeholder-groups="onPlaceholderGroupsChange"
                           >
                           </replacement-edit>
                         </v-tab-item>
@@ -115,7 +117,7 @@
                   </v-col>
                 </v-row>
               </v-card-text>
-              <v-card-actions class="px-4">
+              <!-- <v-card-actions class="px-4">
                 <v-spacer></v-spacer>
                 <v-btn
                   type="submit"
@@ -124,7 +126,7 @@
                   color="primary"
                   >开始替换</v-btn
                 >
-              </v-card-actions>
+              </v-card-actions> -->
             </v-card>
           </v-form>
         </validation-observer>
@@ -139,7 +141,7 @@
     </v-dialog>
     <v-dialog width="600" v-model="dialog.showTemplateList">
       <common-list
-        :condition="{ bcId: formData.businessCategory }"
+        :condition="{ bcId: session.businessCategory }"
         model="Template"
         title="模板"
         :headers="templateHeaders"
@@ -153,7 +155,7 @@
           <v-icon @click="openTemplate(item.path)">mdi-open-in-new</v-icon>
         </template>
         <template v-slot="{ id, name, path, isEdit, cancel, save }">
-          <template-detail :id="id" :name="name" :path="path" :bcId="formData.businessCategory" :isEdit="isEdit" @cancel="cancel" @save="save"></template-detail>
+          <template-detail :id="id" :name="name" :path="path" :bcId="session.businessCategory" :isEdit="isEdit" @cancel="cancel" @save="save"></template-detail>
         </template>
       </common-list>
     </v-dialog>
@@ -171,7 +173,7 @@ import VCascadeSelect from '../VCascadeSelect'
 import BusinessCategoryList from '@/components/BusinessCategory/BusinessCategoryList.vue'
 
 export default {
-  name: 'replace-tab',
+  name: 'replacement-tab',
   props: {
     session: {
       type: Object,
@@ -186,7 +188,7 @@ export default {
     BusinessCategoryList
   },
   mounted() {
-    this.adminMode = window.store.get('settings.adminMode').value
+    this.adminMode = window.store.getSetting('settings.adminMode').value
     this.unsubscribe = window.store.onDidChange('settings.adminMode', this.switchAdminMode)
     this.updateCategoryOptions()
   },
@@ -194,17 +196,35 @@ export default {
     this.unsubscribe && this.unsubscribe()
   },
   watch: {
-    "formData.businessCategory"(val) {
+    session: {
+      deep: true,
+      handler(val) {
+        window.store.saveSession(val)
+      }
+    },
+    // "formData.templates": {
+    //   deep: true,
+    //   handler(val) {
+    //     this.session.templates = val
+    //   }
+    // },
+    "session.businessCategory"(val) {
       console.log("业务分类(watch)：", val);
       this.tab = 0
       if (val) {
         this.onBusinessCategoryChange()
-        this.session.businessCategory = {
-          id: this.formData.businessCategory,
-          name: this.selectedBusinessCategories.map(e=>e.name).join('>')
-        }
+        this.$emit('input', this.session.id, this.selectedBusinessCategories.map(e=>e.name).join('_'))
+        // this.session.businessCategory = {
+        //   id: this.session.businessCategory,
+        //   name: this.selectedBusinessCategories.map(e=>e.name).join('>')
+        // }
+        // this.$emit('input', this.session.id, {
+        //   id: this.session.businessCategory,
+        //   name: this.selectedBusinessCategories.map(e=>e.name).join('>')
+        // })
+        // console.log(this.session.businessCategory.name)
       } else {
-        this.formData.templates.splice(0)
+        this.session.templates.splice(0)
       }
     },
   },
@@ -218,7 +238,7 @@ export default {
         if (obj && Array.isArray(obj)) {
           for (let i = 0; i < obj.length; i++) {
             path.push(obj[i]);
-            if (obj[i].id == this.formData.businessCategory) {
+            if (obj[i].id == this.session.businessCategory) {
               return true;
             } else {
               if (obj[i].children) {
@@ -236,11 +256,34 @@ export default {
         return false;
       };
 
-      this.formData.businessCategory && pathFinder(this.businessCategoryOptions, 0);
+      this.session.businessCategory && pathFinder(this.businessCategoryOptions, 0);
       return path
     },
   },
   methods: {
+    onTemplatePathChange(tplId, path) {
+      console.log(tplId, path)
+      // const template = this.session.templates.find(e=>e.id == tplId)
+      // if (!template) {
+      //   this.session.templates.push({
+      //     id: tplId,
+      //     path: path,
+      //     placeholderGroups: []
+      //   })
+      // } else {
+      //   template.path = path
+      // }
+    },
+    onPlaceholderGroupsChange(tplId, groups) {
+      console.log(tplId, groups)
+      // const idx = this.session.templates.findIndex(e=>e.id == tplId)
+      // if (!idx) {
+      //   // dead code
+      // } else {
+      //   this.$set(this.session.templates[idx], 'placeholderGroups', groups)
+      //   // this.session.templates[idx].placeholderGroups = groups
+      // }
+    },
     switchAdminMode(key, val) {
       this.$set(this, 'adminMode', val.value)
     },
@@ -255,9 +298,9 @@ export default {
     },
     onBusinessCategoryChange() {
       window.replaceService
-        .findTemplateByBcId({ bcId: this.formData.businessCategory })
+        .findTemplateByBcId({ bcId: this.session.businessCategory })
         .then(data => {
-          this.formData.templates = data;
+          this.session.templates = data;
           this.$refs.templateTabs.callSlider()
         }).catch(err => {
           console.log(err)
@@ -273,14 +316,14 @@ export default {
         id: null,
         name: null,
         path: null,
-        bcId: this.formData.businessCategory
+        bcId: this.session.businessCategory
       })
     },
     saveTemplateFile({ path, ignoreSaveFile }) {
       return ignoreSaveFile ? Promise.resolve() : window.ipc
         .invoke("saveFile", {
           srcPath: path,
-          folder: this.formData.businessCategory,
+          folder: this.session.businessCategory,
           type: "template",
         })
     },
@@ -326,28 +369,28 @@ export default {
     showTemplateListDialog() {
       this.dialog.showTemplateList = true;
     },
-    showFolderBrowserDialog() {
-      window.ipc
-        .invoke("directoryPicker", {
-          title: "输出文件夹",
-          directory: this.formData.outputFolder,
-        })
-        .then((res) => {
-          if (res) {
-            this.formData.outputFolder = res;
-          }
-        });
-    },
+    // showFolderBrowserDialog() {
+    //   window.ipc
+    //     .invoke("directoryPicker", {
+    //       title: "输出文件夹",
+    //       directory: this.formData.outputFolder,
+    //     })
+    //     .then((res) => {
+    //       if (res) {
+    //         this.formData.outputFolder = res;
+    //       }
+    //     });
+    // },
   },
   data() {
     return {
       businessCategoryOptions: [
       ],
-      formData: {
-        businessCategory: null,
-        outputFolder: null,
-        templates: [],
-      },
+      // formData: {
+      //   businessCategory: null,
+      //   outputFolder: null,
+      //   templates: [],
+      // },
       templateHeaders: [
         {
           text: 'No.',

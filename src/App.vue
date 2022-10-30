@@ -80,7 +80,7 @@
         </v-hover>
       </div>
     </v-app-bar>
-    <v-navigation-drawer mini-variant mini-variant-width="48" clipped app>
+    <v-navigation-drawer mini-variant mini-variant-width="48" v-if="!showLogin" clipped app>
       <v-tabs grow vertical>
         <template v-for="link in links">
           <v-tooltip transition="fade-transition" :key="link.name" right>
@@ -169,7 +169,12 @@
       <keep-alive>
         <router-view />
       </keep-alive>
+      <!-- 避免遮罩层挡住app-bar -->
+      <v-overlay :absolute="true" :value="showLogin"></v-overlay>
     </v-main>
+    <v-dialog v-model="showLogin" width="unset" no-click-animation hide-overlay persistent light>
+      <common-login @input="e=>showLogin = e"></common-login>
+    </v-dialog>
     <v-bottom-sheet v-model="dialog.settingDialog">
       <v-sheet class="text-center">
         <v-card>
@@ -204,6 +209,18 @@
                       v-model="settings[key].value"
                       :label="setting.name"
                       dense
+                      outlined
+                    ></v-text-field>
+                    <v-text-field
+                      v-else-if="setting.type === 'PATH'"
+                      v-model="settings[key].value"
+                      :label="setting.name"
+                      dense
+                      append-icon="mdi-folder"
+                      @click="showFolderBrowserDialog(key)"
+                      @click:append="showFolderBrowserDialog(key)"
+                      clearable
+                      readonly
                       outlined
                     ></v-text-field>
                     <template v-else>
@@ -256,8 +273,12 @@
 </template>
 
 <script>
+import CommonLogin from './components/Common/CommonLogin.vue'
 export default {
   name: "App",
+  components: {
+    CommonLogin
+  },
   mounted() {
     const theme = localStorage.getItem("darkTheme");
     if (theme) {
@@ -277,7 +298,7 @@ export default {
       localStorage.setItem("darkTheme", this.$vuetify.theme.dark.toString());
     }
 
-    this.settings = window.store.get("settings");
+    this.settings = window.store.getSetting("settings");
 
     window.ipc.invoke("getAppVersion").then((version) => {
       this.appVersion = version;
@@ -302,6 +323,19 @@ export default {
     },
   },
   methods: {
+    showFolderBrowserDialog(key) {
+      window.ipc
+        .invoke("directoryPicker", {
+          title: "请选择文件夹",
+          directory: this.settings[key].value,
+        })
+        .then((res) => {
+          if (res) {
+            this.settings[key].value = res;
+            this.settingChangeHandler({ id: key, ...this.settings[key] })
+          }
+        });
+    },
     toggleDarkMode: function () {
       // this.darkMode = !this.darkMode;
       this.$vuetify.theme.dark = !this.$vuetify.theme.dark;
@@ -335,6 +369,7 @@ export default {
       },
       settings: null,
       maximized: false,
+      showLogin: true
     };
   },
 };

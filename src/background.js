@@ -3,16 +3,17 @@
 import { app, protocol, BrowserWindow, ipcMain, screen, dialog, Notification, shell, remote } from 'electron'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
-import Path from 'path'
+import Path, { sep } from 'path'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import _ from 'lodash'
-import { exec } from 'child_process'
+import { exec, execFile, spawnSync } from 'child_process'
 import { v4 as uuidv4 } from 'uuid'
 import moment from 'moment'
 import numeral from 'numeral'
 import { sequelize } from './database/sequelize'
-import { initSettings } from './store'
+import { getSetting, initSettings, saveSetting } from './store'
 import { findSettingAll } from './service/settingService'
+import log from 'electron-log'
 
 // import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -64,6 +65,13 @@ async function createWindow() {
     // Load the index.html when not in development
     win.loadURL('app://./index.html')
   }
+
+  // Prevent Page refresh
+  // win.webContents.on('before-input-event', (event, input) => {
+  //   if (input.control && input.key.toUpperCase() === 'R') { // Ctrl+R
+  //     event.preventDefault()
+  //   }
+  // })
 }
 
 // Quit when all windows are closed.
@@ -98,7 +106,7 @@ app.on('ready', async () => {
       // await installExtension(VUEJS_DEVTOOLS)
       /*****************************************************/
     } catch (e) {
-      console.error('Vue Devtools failed to install:', e.toString())
+      log.error('Vue Devtools failed to install:', e.toString())
     }
   }
 
@@ -111,8 +119,18 @@ app.on('ready', async () => {
   // 初始化设置
   const settings = await findSettingAll()
   initSettings(settings)
+  const outputDirectory = getSetting("settings.outputDirectory").value
+  if (!outputDirectory) {
+    saveSetting({
+      id: 'outputDirectory',
+      name: '输出目录',
+      description: '替换以后的文档保存在这里',
+      type: 'PATH',
+      value: Path.join(homedir, 'output')
+    })
+  }
 
-  // console.log(__dirname)
+  // log.debug(__dirname)
   // const tar = require('tar')
   // const child_process = require('child_process')
   // if (!existsSync(Path.join(__dirname, 'instdir'))) {
@@ -131,7 +149,7 @@ app.on('ready', async () => {
   // try {
     // child_process.execSync(convertCommandWindows).toString('utf8')
   // } catch (error) {
-  //   console.log(error.toString())
+  //   log.debug(error.toString())
   // }
   
   app.setAppUserModelId(process.execPath)
@@ -155,18 +173,31 @@ if (isDevelopment) {
 }
 
 const homedir = Path.join(app.getPath("documents"), _.camelCase(app.name))
-fs.existsSync(homedir) || fs.mkdir(homedir, err=>{
-  if (err) {
-    console.log(`cannot create app home directory: ${err}`)
-  } else {
-    const subdirs = ['template']
-    subdirs.forEach(subdir=>fs.mkdir(Path.join(homedir, subdir), err=>{
-      if (err) {
-        console.log(`cannot create directory: ${err}`)
-      }
-    }))
-  }
+if (!fs.existsSync(homedir)) {
+  fs.mkdirSync(homedir)
+}
+const subdirs = ['template', 'output']
+subdirs.forEach(subdir=>{
+  const subPath = Path.join(homedir, subdir)
+  fs.existsSync(subPath) || fs.mkdir(subPath, err=>{
+    if (err) {
+      log.error(`cannot create directory: ${err}`)
+    }
+  })
 })
+
+// fs.existsSync(homedir) || fs.mkdir(homedir, err=>{
+//   if (err) {
+//     log.debug(`cannot create app home directory: ${err}`)
+//   } else {
+//     const subdirs = ['template', 'output']
+//     subdirs.forEach(subdir=>fs.mkdir(Path.join(homedir, subdir), err=>{
+//       if (err) {
+//         log.debug(`cannot create directory: ${err}`)
+//       }
+//     }))
+//   }
+// })
 
 // TODO 暂不支持多窗口
 ipcMain.handle('minimize', async () => {
@@ -189,7 +220,7 @@ ipcMain.handle('close', async event => {
 })
 
 // ipcMain.handle('toMain', async (event, data) => {
-//   console.log(data)
+//   log.debug(data)
 //   event.sender.send('fromMain', 'hello from main')
 //   return 'yes'
 // })
@@ -257,6 +288,14 @@ ipcMain.handle('deleteFile', async (event, { filePath }) => {
   }
 })
 
+ipcMain.handle('createSession', async (event, { id: sessionId }) => {
+  const sessionFolder = getSessionPath(sessionId)
+  if (!fs.existsSync(sessionFolder)) {
+    return fs.mkdirSync(sessionFolder, { recursive: true })
+  }
+  // return fs.mkdtempSync(`${sessionFolder}${sep}`)
+})
+
 // ipcMain.on('previewPdf', async (event, { id, path: tplPath }) => {
   
 //   const extOutput = 'pdf'
@@ -267,7 +306,7 @@ ipcMain.handle('deleteFile', async (event, { filePath }) => {
 //   try {
 //     exec(convertCommandWindows, (error, stdout, stderr) => {
 //       if (error) {
-//         console.log(error.toString())
+//         log.debug(error.toString())
 //       } else {
 //         const oriPdf = Path.join(outputDir, `${Path.parse(tplPath).name}.${extOutput}`)
 //         // const tmpPdf = Path.join(outputDir, `${uuidv4()}.${extOutput}`)
@@ -279,18 +318,39 @@ ipcMain.handle('deleteFile', async (event, { filePath }) => {
 //     // execSync(convertCommandWindows).toString('utf8')
 //     // return await shell.openPath(tmpPdf)
 //   } catch (error) {
-//     console.log(error.toString())
+//     log.debug(error.toString())
 //   }
 // })
 
 function previewPdfCmd(outputDir, pathFile) {
   const soffice = Path.resolve("C:/Users/EricW/Documents/WORKSPACE/VSCODE/swift-placeholder-desktop", 'instdir', 'program', 'soffice.exe')
-  return `${soffice} --headless --norestore --invisible --nodefault --nofirststartwizard --nolockcheck --nologo --convert-to pdf --outdir ${outputDir} "${pathFile}"`;
+  // return `${soffice} --headless --norestore --invisible --nodefault --nofirststartwizard --nolockcheck --nologo --convert-to pdf --outdir ${outputDir} "${pathFile}"`;
+  return {
+    convertCmd: soffice,
+    convertArgs: [
+      '--headless',
+      '--norestore',
+      '--invisible',
+      '--nodefault',
+      '--nofirststartwizard',
+      '--nolockcheck',
+      '--nologo',
+      '--convert-to',
+      'pdf',
+      '--outdir',
+      outputDir,
+      pathFile
+    ]
+  }
 }
 
 function doReplaceCmd(sourceDoc, outputDoc, args) {
   const replaceApp = Path.resolve("C:/Users/EricW/Documents/WORKSPACE/VSCODE/swift-placeholder-desktop", "replaceApp", "replaceApp.exe")
-  return `${replaceApp} -s "${sourceDoc}" -o "${outputDoc}" ${args}`
+  // return `${replaceApp} -s "${sourceDoc}" -o "${outputDoc}" ${args}`
+  return {
+    replaceCmd: replaceApp, 
+    replaceArgs: ['-s', sourceDoc, '-o', outputDoc, ...args]
+  }
 }
 
 function formatReplacement({ value, type, format }) {
@@ -310,45 +370,126 @@ function formatReplacement({ value, type, format }) {
   return result
 }
 
-ipcMain.on('previewPdf', async (event, { uid, id, path: tplPath, data }) => {
-  const outputDir = app.getPath('temp')
+function getSessionPath(sessionId) {
+  return Path.resolve(app.getPath('temp'), app.getName(), 'session', sessionId)
+}
+
+function getOutputPath(name, parentFolder = "") {
+  const path = Path.join(getSetting("settings.outputDirectory").value, parentFolder, name)
+  fs.existsSync(path) || fs.mkdirSync(path, { recursive: true })
+  return path
+}
+
+import async from 'async'
+const q = async.queue(function(task, callback) {
+  const processPdf = task.isPreview ? doPreviewPdf : doReplacePdf
+  processPdf(task.event, task.args, callback)
+})
+q.drain(function() {
+  log.debug("处理完毕");
+});
+q.error(function(err, task) {
+  log.error(err, task);
+});
+
+function doReplacePdf(event, { path: tplPath, name, filename, data, parentFolder }, callback) {
+  const parentDir = getOutputPath(parentFolder)
+  const outputDir = getOutputPath(name, parentFolder)
+  const sourceDoc = tplPath
+  const outputDoc = Path.join(outputDir, `${filename}.docx`)
+  const args = []
+  data.forEach(e => {
+    if (e.value !== "") {
+      args.push('-p')
+      args.push(e.name)
+      args.push('-r')
+      args.push(formatReplacement(e))
+    }
+  })
+  const { replaceCmd, replaceArgs } = doReplaceCmd(sourceDoc, outputDoc, args)
+  try {
+    execFile(replaceCmd, replaceArgs, (error, stdout, stderr) => {
+      if (error) {
+        log.error(error)
+        return
+      }
+      // const placeholders = stdout.split('\n')
+      // log.debug(placeholders)
+      // event.sender.send(`readPlaceholderFromTemplate-${uid}`, { id: id, ph: placeholders })
+      const inputDoc = outputDoc
+      const { convertCmd, convertArgs } = previewPdfCmd(outputDir, inputDoc)
+      execFile(convertCmd, convertArgs, (error, stdout, stderr) => {
+        if (error) {
+          log.error(error)
+          return
+        }
+        event.sender.send(`replacePdf`, {
+          output: parentDir
+        })
+        callback()
+      })
+    })
+    
+  } catch (error) {
+    log.error(error.toString())
+  }
+}
+
+function doPreviewPdf(event, { uid, sessionId, id, path: tplPath, data }, callback) {
+  const outputDir = getSessionPath(sessionId)
   const sourceDoc = tplPath
   const tempUuid = uuidv4()
   const outputDoc = Path.join(outputDir, `${tempUuid}.docx`)
-  const args = data.map(e=>{
-    return `-p "${e.name}" -r "${formatReplacement(e)}"`
-  }).join(" ")
-  const replaceCommandWindows = doReplaceCmd(sourceDoc, outputDoc, args)
+  const args = []
+  data.forEach(e => {
+    if (e.value !== "") {
+      args.push('-p')
+      args.push(e.name)
+      args.push('-r')
+      args.push(formatReplacement(e))
+    }
+  })
+  const { replaceCmd, replaceArgs } = doReplaceCmd(sourceDoc, outputDoc, args)
   try {
-    exec(replaceCommandWindows, (error, stdout, stderr) => {
+    execFile(replaceCmd, replaceArgs, (error, stdout, stderr) => {
       if (error) {
-        console.error(error)
-      } else {
-        const placeholders = stdout ? stdout.split('\n') : []
-        // console.log(stdout)
-        event.sender.send(`readPlaceholderFromTemplate-${uid}`, { id: id, ph: placeholders })
-        const inputDoc = outputDoc
-        const convertCommandWindows = previewPdfCmd(outputDir, inputDoc)
-        try {
-          exec(convertCommandWindows, (error, stdout, stderr) => {
-            if (error) {
-              console.error(error)
-            } else {
-              const oriPdf = Path.join(outputDir, `${tempUuid}.pdf`)
-              const buffer = fs.readFileSync(oriPdf)
-              event.sender.send(`previewPdf-${uid}`, { id: id, path: oriPdf, data: buffer })
-            }
-          })
-        } catch (error) {
-          console.error(error)
-        }
+        log.error(error)
+        return
       }
+      const placeholders = stdout.split('\n')
+      log.debug(placeholders)
+      event.sender.send(`readPlaceholderFromTemplate-${uid}`, { id: id, ph: placeholders })
+      const inputDoc = outputDoc
+      const { convertCmd, convertArgs } = previewPdfCmd(outputDir, inputDoc)
+      execFile(convertCmd, convertArgs, (error, stdout, stderr) => {
+        if (error) {
+          log.error(error)
+          return
+        }
+        const oriPdf = Path.join(outputDir, `${tempUuid}.pdf`)
+        const buffer = fs.readFileSync(oriPdf)
+        event.sender.send(`previewPdf-${uid}`, { id: id, path: oriPdf, data: buffer })
+        callback()
+      })
     })
+    
   } catch (error) {
-    console.log(error.toString())
+    log.error(error.toString())
+  }
+}
+
+ipcMain.on('previewPdf', (event, args) => {
+  q.push({ event, args, isPreview: true })
+})
+
+ipcMain.on('replacePdf', (event, args) => {
+  const parentFolder = moment().format('YYYYMMDDHHmmss')
+  for (const argv of args) {
+    argv.parentFolder = parentFolder
+    q.push({ event, args: argv, isPreview: false })
   }
 })
 
 process.on('unhandledRejection', error => {
-  console.error(error)
+  log.error(error)
 })

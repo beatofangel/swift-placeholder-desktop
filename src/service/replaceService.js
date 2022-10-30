@@ -646,40 +646,40 @@ export async function bulkSavePlaceholderGroup(items) {
   });
 }
 
-export async function checkPlaceholderExistanceByName(items) {
-  return await beginTx(async (tx) => {
-    const result = [];
-    for (const item of items) {
-      const placeholderItem = await PlaceholderItemModel.findOne({
-        where: {
-          name: item.name,
-        },
-        include: {
-          model: PlaceholderGroupModel,
-          include: {
-            model: TemplateModel,
-            where: {
-              id: item.tplId
-            }
-          }
-        }
-      });
-      if (placeholderItem) {
-        result.push({
-          id: placeholderItem.id,
-          text: item.text,
-          type: placeholderItem.type,
-          format: placeholderItem.format,
-          status: placeholderItem.PlaceholderGroups.length == 0 ? 'saved' : 'bound'
-        });
-      }
-    }
+// export async function checkPlaceholderExistanceByName(items) {
+//   return await beginTx(async (tx) => {
+//     const result = [];
+//     for (const item of items) {
+//       const placeholderItem = await PlaceholderItemModel.findOne({
+//         where: {
+//           name: item.name,
+//         },
+//         include: {
+//           model: PlaceholderGroupModel,
+//           include: {
+//             model: TemplateModel,
+//             where: {
+//               id: item.tplId
+//             }
+//           }
+//         }
+//       });
+//       if (placeholderItem) {
+//         result.push({
+//           id: placeholderItem.id,
+//           text: item.text,
+//           type: placeholderItem.type,
+//           format: placeholderItem.format,
+//           status: placeholderItem.PlaceholderGroups.length == 0 ? 'saved' : 'bound'
+//         });
+//       }
+//     }
 
-    return result;
-  });
-}
+//     return result;
+//   });
+// }
 
-export async function checkPlaceholderExistanceByName2(items, tplId) {
+export async function checkPlaceholderExistanceByName(items, tplId) {
   return await beginTx(async (tx) => {
     const placeholderItems = await PlaceholderItemModel.findAll({
       where: {

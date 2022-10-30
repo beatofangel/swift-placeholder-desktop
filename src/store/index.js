@@ -1,6 +1,7 @@
 const Store = require('electron-store')
 
 const store = new Store()
+const sessionStore = new Store({ name: 'session'})
 
 /* store.has("settings") ||  */// store.set("settings", {})
 
@@ -9,7 +10,7 @@ export function saveSetting(setting) {
   store.set(`settings.${setting.id}.description`, setting.description)
   store.set(`settings.${setting.id}.type`, setting.type)
   store.set(`settings.${setting.id}.value`, setting.value)
-  // store.get("settings")[setting.id] = {
+  // store.getSetting("settings")[setting.id] = {
   //   name: setting.name,
   //   description: setting.description,
   //   type: setting.type,
@@ -22,7 +23,7 @@ export function initSettings(settings) {
     store.set(`settings.${setting.id}.description`, setting.description)
     store.set(`settings.${setting.id}.type`, setting.type)
     store.set(`settings.${setting.id}.value`, setting.value)
-    // store.get("settings")[setting.id] = {
+    // store.getSetting("settings")[setting.id] = {
     //   name: setting.name,
     //   description: setting.description,
     //   type: setting.type,
@@ -31,11 +32,44 @@ export function initSettings(settings) {
   })
 }
 
+export function saveSession(session) {
+  const sessions = sessionStore.get(`sessions`)
+  if (sessions) {
+    const idx = sessions.findIndex(e=>e.id==session.id)
+    if (idx != -1) {
+      sessions[idx] = session
+    } else {
+      sessions.push(session)
+    }
+    sessionStore.set(`sessions`, sessions)
+  } else {
+    sessionStore.set(`sessions`, [session])
+  }
+}
+
+export function loadSessions() {
+  const sessions = sessionStore.get(`sessions`)
+  return sessions
+}
+
+export function deleteSession(sessionId) {
+  const sessions = sessionStore.get(`sessions`)
+  const idx = sessions.findIndex(e=>e.id==sessionId)
+  if (idx != -1) {
+    sessions.splice(idx, 1)
+  }
+  sessionStore.set(`sessions`, sessions)
+}
+
+export function clearSessions() {
+  sessionStore.set(`sessions`, [])
+}
+
 // export function isAdminMode() {
-//   return store.get("settings.adminMode.value") == 1
+//   return store.getSetting("settings.adminMode.value") == 1
 // }
 
-export function get(key) {
+export function getSetting(key) {
   return store.get(key)
 }
 

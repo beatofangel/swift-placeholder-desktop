@@ -10,14 +10,17 @@ const channels = {
     'saveFile',
     'deleteFile',
     'previewPdf',
+    'replacePdf',
     'getAppVersion',
     'minimize',
     'maximize',
     'close',
+    'createSession'
   ],
   m2r: [
     'fromMain',
     'previewPdf',
+    'replacePdf',
     'readPlaceholderFromTemplate'
   ]
 }

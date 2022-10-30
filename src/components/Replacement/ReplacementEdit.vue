@@ -30,7 +30,7 @@
             style="position: absolute; bottom: 30px; left: 0; width: 80%"
           >
             <draggable
-              v-model="placeholdersInTemplate2"
+              v-model="placeholdersInTemplate"
               :animation="200"
               :group="{ name: 'placeholder' }"
               :disabled="!showPlaceholderDetail"
@@ -45,7 +45,7 @@
               @start="onDrag"
               @end="onDrop"
             >
-              <template v-for="({ name, status }, index) in placeholdersInTemplate2">
+              <template v-for="({ name, status }, index) in placeholdersInTemplate">
                 <v-chip
                   v-if="(
                     status == 'new' ||
@@ -78,30 +78,6 @@
                   {{ $formatPlaceholder(name) }}
                 </v-chip>
               </template>
-              <!-- <template v-for="{ text, unbound, id } in placeholdersInTemplate">
-                <v-chip
-                  v-if="
-                    (showPlaceholderDetail && unbound) ||
-                    !showPlaceholderDetail
-                  "
-                  class="ma-2"
-                  :class="{
-                    'chip-draggable': showPlaceholderDetail,
-                    'chip-regular': !showPlaceholderDetail,
-                  }"
-                  :disabled="!unbound"
-                  :label="!unbound"
-                  :color="`${unbound ? 'warning' : ''} lighten-1`"
-                  :outlined="
-                    !showPlaceholderDetail && !unbound && !$vuetify.theme.dark
-                  "
-                  :key="text"
-                >
-                  <v-icon v-if="!unbound">mdi-link-variant</v-icon>
-                  <v-icon v-else-if="!!id">mdi-content-save-outline</v-icon>
-                  {{ text }}
-                </v-chip>
-              </template> -->
             </draggable>
           </v-card>
         </v-slide-y-reverse-transition>
@@ -161,7 +137,7 @@
           :isEdit="isEditPlaceholder"
           :tplId="tplId"
           :placeholder="placeholderNewGroup"
-          :placeholdersInTemplate="placeholdersInTemplate2"
+          :placeholdersInTemplate="placeholdersInTemplate"
           @cancel="onCancel"
           @delete="onDelete"
           @save="onSave"
@@ -195,7 +171,7 @@
             elevation="0"
             tile
             v-if="placeholderDisplayMode == 1"
-            height="calc(100vh - 564px)"
+            height="calc(100vh - 434px)"
           >
             <v-card-subtitle>问卷模式</v-card-subtitle>
             <div class="text-h2">尽请期待</div>
@@ -204,7 +180,7 @@
             v-if="placeholderDisplayMode == 0"
             key="placeholder"
             fixed-header
-            height="calc(100vh - 564px)"
+            height="calc(100vh - 434px)"
             :items="placeholderGroups"
             :headers="placeholderGroupsHeaders"
             hide-default-footer
@@ -367,6 +343,10 @@ export default {
   props: {
     tplId: String,
     tplPath: String,
+    session: {
+      type: Object,
+      default: () => {}
+    }
   },
   components: {
     draggable,
@@ -384,32 +364,10 @@ export default {
     });
     window.ipc.receive(`readPlaceholderFromTemplate-${this.uid}`, ({ id, ph }) => {
       if (this.tplId == id) {
-        window.replaceService.checkPlaceholderExistanceByName2(ph.map(this.$parsePlaceholder), this.tplId).then(data => {
+        window.replaceService.checkPlaceholderExistanceByName(ph.map(this.$parsePlaceholder), this.tplId).then(data => {
           console.log(data)
-          this.placeholdersInTemplate2 = data
+          this.placeholdersInTemplate = data
         })
-
-        // this.placeholdersInTemplate = ph.map((e) => {
-        //   return {
-        //     text: e,
-        //     unbound:
-        //       this.placeholderGroups.findIndex(
-        //         (group) =>
-        //           group.placeholders.findIndex(
-        //             (placeholder) => this.$formatPlaceholder(placeholder) == e
-        //           ) != -1
-        //       ) == -1,
-        //   };
-        // });
-
-        // window.replaceService.checkPlaceholderExistanceByName(this.placeholdersInTemplate.filter(pit=>pit.unbound).map(pit=>{ return {name: this.$parsePlaceholder(pit.text), text: pit.text} })).then(data => {
-        //   data.forEach(existance => {
-        //     const pit = this.placeholdersInTemplate.find(p=>p.text==existance.text)
-        //     pit.id = existance.id
-        //     pit.type = existance.type
-        //     pit.format = existance.format
-        //   })
-        // })
 
         // 右侧标签列表：禁用已包含在模板中的占位符
         this.placeholderGroups.forEach((group) => {
@@ -432,20 +390,23 @@ export default {
     console.log(`listener readPlaceholderFromTemplate-${this.uid} is removed.`)
   },
   watch: {
+    // tplPath: {
+    //   immediate: true,
+    //   handler(val) {
+    //     this.$emit('input:template-path', this.tplId, val)
+    //   }
+    // },
+    placeholderGroups: {
+      deep: true,
+      handler(val) {
+        this.session.templates.find(e=>e.id==this.tplId).placeholderGroups = val
+        window.store.saveSession(this.session)
+      }
+    },
     drag(val) {
       console.log("drag variable:", val);
     },
     placeholdersInTemplate: {
-      deep: true,
-      handler(val) {
-        if (!val.find((e) => e.unbound)) {
-          this.placeholdersInTemplateVisible = false;
-        } else {
-          this.placeholdersInTemplateVisible = true;
-        }
-      },
-    },
-    placeholdersInTemplate2: {
       deep: true,
       handler(val) {
         if (!val.find((e) => ['new', 'saved'].includes(e.status))) {
@@ -470,6 +431,16 @@ export default {
         ghostClass: "ghost",
       };
     },
+    placeholders() {
+      const ph = []
+      this.placeholderGroups.forEach(group => {
+        ph.push(...group.placeholders)
+      })
+      return ph
+    },
+    sessionTemplate() {
+      return this.session.templates.find(e=>e.id == this.tplId)
+    }
   },
   methods: {
     onIntersect(entries) {
@@ -482,6 +453,18 @@ export default {
         .findPlaceholderByTplId({ tplId: this.tplId })
         .then((data) => {
           this.placeholderGroups = data;
+          if (this.sessionTemplate) {
+            this.placeholderGroups.forEach(group=>{
+              if (this.sessionTemplate.placeholderGroups) {
+                const sessionGroup = this.sessionTemplate.placeholderGroups.find(e=>e.id==group.id)
+                if (sessionGroup) {
+                  sessionGroup.placeholders.forEach(sessionPlaceholder=>{
+                    group.placeholders.find(e=>e.id==sessionPlaceholder.id).value = sessionPlaceholder.value
+                  })
+                }
+              }
+            })
+          }
           this.placeholderGroupsExpanded = this.placeholderGroups;
           preview && this.previewPdf();
         });
@@ -502,6 +485,7 @@ export default {
       this.templatePreviewLoading = true;
       window.ipc.send('previewPdf', {
         uid: this.uid,
+        sessionId: this.session.id,
         id: this.tplId,
         path: this.tplPath,
         data: replaceFlag ? this.placeholders : [],
@@ -573,20 +557,13 @@ export default {
     onDelete(item) {
       if (item) {
         console.log("onDelete", item)
-        this.placeholdersInTemplate2.push(item);
+        this.placeholdersInTemplate.push(item);
       }
 
-      // let preview = true
-      // if (this.isEditPlaceholder) {
-      //   preview = !item
-      // } else {
-      //   preview = false
-      // }
       this.initTemplate()
     },
     onCancel(items) {
-      // this.placeholdersInTemplate.push(...items);
-      this.placeholdersInTemplate2.push(...items);
+      this.placeholdersInTemplate.push(...items);
       this.placeholderNewGroup.group = { id: null, name: null };
       this.placeholderNewGroup.placeholders.splice(0);
       this.showPlaceholderDetail = false;
@@ -598,7 +575,7 @@ export default {
       this.initTemplate()
     },
     onClear(items) {
-      this.placeholdersInTemplate2.push(...items);
+      this.placeholdersInTemplate.push(...items);
     },
     changeDisplayMode(value) {
       console.log(value);
@@ -608,9 +585,7 @@ export default {
     return {
       placeholderGroups: [],
       placeholderGroupsExpanded: [],
-      placeholders: [],
       placeholdersInTemplate: [],
-      placeholdersInTemplate2: [],
       placeholdersInTemplateVisible: true,
       templatePreviewLoading: false,
       pdfOptions: {

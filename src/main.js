@@ -10,7 +10,10 @@ import "vue-toastification/dist/index.css"
 import VuetifyDialog from 'vuetify-dialog'
 import 'vuetify-dialog/dist/vuetify-dialog.css'
 import UniqueId from 'vue-unique-id'
+import axios from 'axios'
+import VueAxios from 'vue-axios'
 
+Vue.use(VueAxios, axios)
 Vue.use(VuetifyDialog, {
   context: {
     vuetify
@@ -72,19 +75,32 @@ String.prototype.format = function () {
     return typeof args[index] == 'undefined' ? match : args[index];
   });
 };
+
 Vue.prototype.$formatPlaceholder = function(item) {
   const name = typeof item == 'object' ? item.name : item
-  const { value } = window.store.get('settings.placeholderFormat')
+  const { value } = window.store.getSetting('settings.placeholderFormat')
   return value.format(name)
   // return `$\{${name}}`;
 },
 Vue.prototype.$parsePlaceholder = function(strPlaceholder) {
   // const regex = /\$\{(.*)\}/;
-  const { value } = window.store.get('settings.placeholderRegex');
+  const { value } = window.store.getSetting('settings.placeholderRegex');
   const regex = new RegExp(value);
   const arr = regex.exec(strPlaceholder);
   return arr.length > 1 ? arr[1] : null;
 }
+
+Array.prototype.normalize = function(field, range=[0, 1]) {
+  var Self = this.filter(e=>e[field] !== "").map(e=>e[field]);
+  const min = Math.min.apply(Math, Self);
+  const max = Math.max.apply(Math, Self);
+  const variation = (range[1] - range[0]) / (max - min);
+  this.forEach(e => {
+    const val = (range[0] + ((e[field] - min) * variation)).toFixed(2);
+    e[field] = +val;
+  });
+  return this;
+};
 
 Vue.config.productionTip = false
 Vue.component('validation-provider', ValidationProvider)
