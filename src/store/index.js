@@ -47,9 +47,9 @@ export function saveSession(session) {
   }
 }
 
-export function loadSessions() {
+export function loadSessions(type) {
   const sessions = sessionStore.get(`sessions`)
-  return sessions
+  return sessions ? (type ? sessions.filter(e=>e.type==type) : sessions) : []
 }
 
 export function deleteSession(sessionId) {

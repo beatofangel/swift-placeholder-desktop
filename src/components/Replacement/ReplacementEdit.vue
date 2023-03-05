@@ -12,14 +12,15 @@
             <v-img src="spinner.svg"></v-img>
           </v-col>
         </v-row>
-        <iframe
+        <!-- <iframe
           key="iframe"
           v-else
           :src="templatePreviewUrl"
           width="100%"
           height="100%"
           frameborder="0"
-        ></iframe>
+        ></iframe> -->
+        <pdf-viewer :src="templatePreviewUrl"></pdf-viewer>
         <v-slide-y-reverse-transition>
           <v-card
             v-if="placeholdersInTemplateVisible"
@@ -47,34 +48,17 @@
             >
               <template v-for="({ name, status }, index) in placeholdersInTemplate">
                 <v-chip
-                  v-if="(
-                    status == 'new' ||
-                    status == 'saved' && (
-                      !showPlaceholderDetail ||
-                      (
-                        isEditPlaceholder ||
-                        (
-                          placeholderNewGroup.placeholders.findIndex(e=>e.name==name) == -1
-                        )
-                      )
-                    ) ||
-                    status == 'bound' && !showPlaceholderDetail
-                  )"
+                  v-if="showPlaceholderInTemplate(name, status)"
                   class="ma-2"
-                  :class="{
-                    'chip-draggable': showPlaceholderDetail,
-                    'chip-regular': !showPlaceholderDetail,
-                  }"
-                  :disabled="status == 'bound'"
-                  :label="status == 'bound'"
-                  :color="`${status == 'bound' ? '' : 'warning'} lighten-1`"
-                  :outlined="
-                    status == 'bound' && !$vuetify.theme.dark
-                  "
+                  :class="{ 'placeholder-chip-draggable': showPlaceholderDetail, 'placeholder-chip-regular': !showPlaceholderDetail }"
+                  :disabled="status === 'bound'"
+                  :label="status === 'bound'"
+                  :color="`${status === 'bound' ? '' : 'warning'} lighten-1`"
+                  :outlined="status === 'bound' && !$vuetify.theme.dark"
                   :key="index"
                 >
-                  <v-icon v-if="status == 'bound'">mdi-link-variant</v-icon>
-                  <v-icon v-else-if="status == 'saved'">mdi-content-save-outline</v-icon>
+                  <v-icon v-if="status === 'bound'">mdi-link-variant</v-icon>
+                  <v-icon v-else-if="status === 'saved'">mdi-content-save-outline</v-icon>
                   {{ $formatPlaceholder(name) }}
                 </v-chip>
               </template>
@@ -339,6 +323,7 @@ import _ from "lodash";
 import PlaceholderDetail from "../Placeholder/PlaceholderDetail.vue"
 // import ConfirmDialog from '../Common/ConfirmDialog.vue';
 // import nzhcn from "nzh/cn";
+import pdfViewer from "../Common/CommonPdfViewer"
 export default {
   props: {
     tplId: String,
@@ -351,6 +336,7 @@ export default {
   components: {
     draggable,
     PlaceholderDetail,
+    pdfViewer
     // ConfirmDialog
   },
   mounted() {
@@ -364,8 +350,10 @@ export default {
     });
     window.ipc.receive(`readPlaceholderFromTemplate-${this.uid}`, ({ id, ph }) => {
       if (this.tplId == id) {
+        // window.log.debug(ph)
         window.replaceService.checkPlaceholderExistanceByName(ph.map(this.$parsePlaceholder), this.tplId).then(data => {
           console.log(data)
+          // window.log.debug(data)
           this.placeholdersInTemplate = data
         })
 
@@ -443,6 +431,19 @@ export default {
     }
   },
   methods: {
+    showPlaceholderInTemplate(name, status) {
+      const newPh = status === 'new'
+      const savedPh = status === 'saved' && (!this.showPlaceholderDetail ||
+          (
+            this.isEditPlaceholder ||
+            (
+              this.placeholderNewGroup.placeholders.findIndex(e=>e.name==name) == -1
+            )
+          ))
+      const boundPh = status === 'bound' && !this.showPlaceholderDetail
+      // window.log.debug(newPh, savedPh, boundPh)
+      return newPh || savedPh || boundPh
+    },
     onIntersect(entries) {
       this.present = entries[0].isIntersecting
     },
@@ -683,32 +684,18 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
 .column-width-no {
   width: 48px;
 }
 .column-width-name {
   width: 30%;
 }
-.chip-regular {
-  opacity: 75%;
+.placeholder-chip-regular {
+  opacity: 0.75;
 }
-.chip-draggable {
+.placeholder-chip-draggable {
   cursor: move;
-}
-.placeholder-drop-area {
-  border: 1px dashed rgba(0, 0, 0, 0.4) !important;
-}
-.placeholder-drop-area-hint {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  opacity: 50%;
-  font-size: 20px;
-  overflow: hidden;
-  pointer-events: none;
 }
 .narrow-select .v-select__selections input {
   display: none;

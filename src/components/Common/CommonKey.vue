@@ -59,12 +59,14 @@ export default {
 .keyboard-decorate {
   border: rgb(172, 172, 172) 1px solid;
   border-radius: 5px;
+  border-left-width: 2px;
   border-right-width: 2px;
   box-shadow: 0 8px rgb(172, 172, 172), 4px 12px 9px 2px rgb(212 212 212 / 70%);
 }
 .keyboard-decorate-dark {
   border: rgb(72, 72, 72) 1px solid;
   border-radius: 5px;
+  border-left-width: 2px;
   border-right-width: 2px;
   box-shadow: 0 8px rgb(72, 72, 72), 4px 12px 9px 2px rgb(42 42 42 / 70%);
 }

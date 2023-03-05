@@ -7,15 +7,15 @@ Vue.use(VueRouter)
 const routes = [
   {
     path: '/',
-    name: 'Home',
-    icon: 'mdi-home',
-    component: () => import('../views/HomeView.vue')
-  },
-  {
-    path: '/replace',
     name: '替换',
     icon: 'mdi-file-replace',
     component: () => import('../views/ReplaceView.vue')
+  },
+  {
+    path: '/workshop',
+    name: '模板工坊',
+    icon: 'mdi-file-document-edit',
+    component: () => import('../views/WorkshopView.vue')
   },
   {
     path: '/about',
@@ -29,6 +29,7 @@ const routes = [
 ]
 
 const router = new VueRouter({
+  mode: 'history',
   routes
 })
 

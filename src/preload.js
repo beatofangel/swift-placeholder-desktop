@@ -60,3 +60,4 @@ contextBridge.exposeInMainWorld('replaceService', { ...require('./service/replac
 contextBridge.exposeInMainWorld('settingService', { ...require('./service/settingService') })
 contextBridge.exposeInMainWorld('commonService', { ...require('./service/commonService') })
 contextBridge.exposeInMainWorld('store', { ...require('./store') })
+contextBridge.exposeInMainWorld('log', { ...require('electron-log') })

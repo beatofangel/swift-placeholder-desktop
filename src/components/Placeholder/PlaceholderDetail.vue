@@ -5,7 +5,7 @@
         <v-data-table
           key="placeholder"
           fixed-header
-          height="calc(100vh - 700px)"
+          height="calc(100vh - 570px)"
           :items="formData.placeholders"
           :headers="placeholderGroupHeaders"
           hide-default-footer

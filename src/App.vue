@@ -8,6 +8,7 @@
       flat
       dense
       dark
+      fixed
     >
       <div class="d-flex align-center logo">
         <v-img
@@ -488,5 +489,21 @@ export default {
 .slide-up-leave-to {
   opacity: 0;
   transform: translateY(-16px);
+}
+
+.placeholder-drop-area {
+  border: 1px dashed rgba(0, 0, 0, 0.4) !important;
+}
+
+.placeholder-drop-area-hint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  opacity: 0.5;
+  font-size: 20px;
+  overflow: hidden;
+  pointer-events: none;
 }
 </style>

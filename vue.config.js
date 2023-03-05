@@ -1,6 +1,7 @@
 module.exports = {
   transpileDependencies: [
-    'vuetify'
+    'vuetify',
+    'pdfjs-dist'
   ],
   configureWebpack: {
     devtool: 'source-map',

@@ -64,6 +64,8 @@ async function createWindow() {
     createProtocol('app')
     // Load the index.html when not in development
     win.loadURL('app://./index.html')
+    // debug in production mode
+    // win.webContents.openDevTools({ mode: 'undocked' })
   }
 
   // Prevent Page refresh
@@ -345,7 +347,7 @@ function previewPdfCmd(outputDir, pathFile) {
 }
 
 function doReplaceCmd(sourceDoc, outputDoc, args) {
-  const replaceApp = Path.resolve("replaceApp", "replaceApp.exe")
+  const replaceApp = Path.resolve("replaceApp", "win-x64", "replaceApp.exe")
   // return `${replaceApp} -s "${sourceDoc}" -o "${outputDoc}" ${args}`
   return {
     replaceCmd: replaceApp, 
@@ -407,6 +409,7 @@ function doReplacePdf(event, { path: tplPath, name, filename, data, parentFolder
     }
   })
   const { replaceCmd, replaceArgs } = doReplaceCmd(sourceDoc, outputDoc, args)
+  log.debug(replaceCmd, replaceArgs)
   try {
     execFile(replaceCmd, replaceArgs, (error, stdout, stderr) => {
       if (error) {
@@ -418,6 +421,7 @@ function doReplacePdf(event, { path: tplPath, name, filename, data, parentFolder
       // event.sender.send(`readPlaceholderFromTemplate-${uid}`, { id: id, ph: placeholders })
       const inputDoc = outputDoc
       const { convertCmd, convertArgs } = previewPdfCmd(outputDir, inputDoc)
+      log.debug(convertCmd, convertArgs)
       execFile(convertCmd, convertArgs, (error, stdout, stderr) => {
         if (error) {
           log.error(error)

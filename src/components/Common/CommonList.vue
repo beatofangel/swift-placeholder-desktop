@@ -1,9 +1,9 @@
 <template>
   <v-card :flat="flat">
-    <v-card-title v-if="hideToolBar" class="d-flex justify-center">
+    <v-card-title v-if="hideToolBar && !!title" class="d-flex justify-center">
       <span class="text-h5 ml-1 mt-1">{{ title }}列表</span>
     </v-card-title>
-    <v-toolbar v-else color="primary" dark>
+    <v-toolbar v-else-if="!!title" color="primary" dark>
       <v-icon>mdi-format-list-bulleted</v-icon>
       <span class="text-h5 ml-1 mt-1">{{ title }}列表</span>
       <v-spacer></v-spacer>
@@ -73,7 +73,7 @@
     </v-data-table>
     <v-divider></v-divider>
     <v-card-actions>
-      <v-btn v-if="showSelect && !hideSelectBtn" color="primary" :disabled="items.length == 0 || selected.length == 0" @click="handleSelect">选择</v-btn>
+      <!-- <v-btn v-if="showSelect && !hideSelectBtn" color="primary" :disabled="items.length == 0 || selected.length == 0" @click="handleSelect">选择</v-btn> -->
       <v-spacer></v-spacer>
       <v-btn v-if="!hideCreate" color="success" @click="showEdit()"><v-icon>mdi-plus</v-icon></v-btn>
     </v-card-actions>
@@ -158,7 +158,10 @@ export default {
     condition: {
       deep: true,
       handler(newVal, oldVal) {
-        if (!this.cascade) return
+        // =====TODO 待测试=====
+        if (newVal === oldVal) return
+        // =====================
+        // if (!this.cascade) return
         console.log("condition", newVal, oldVal)
         this.$set(this, 'selected', [])
         if (newVal) {
